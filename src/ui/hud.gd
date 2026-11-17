@@ -29,6 +29,8 @@ var weapon_label: Label
 var pip_rects: Array[ColorRect] = []
 var edge_fill: ColorRect
 var charge_fill: ColorRect
+var gauge_label: Label
+var lost_label: Label
 var _cjk_font: SystemFont
 var damage_flash: ColorRect
 var dummy_label: Label
@@ -237,6 +239,11 @@ func _make_weapon_panel(parent: Control) -> void:
 	e.position = Vector2(140, 66)
 	e.text = "刃"
 	parent.add_child(e)
+	gauge_label = e
+	lost_label = _make_label(14)
+	lost_label.position = Vector2(0, 92)
+	lost_label.add_theme_color_override("font_color", Color(0.85, 0.7, 1.0))
+	parent.add_child(lost_label)
 	var bg := ColorRect.new()
 	bg.color = Color(0, 0, 0, 0.6)
 	bg.position = Vector2(166, 74)
@@ -256,15 +263,28 @@ func _make_weapon_panel(parent: Control) -> void:
 func _update_weapon_panel(f: FighterState, moves: MoveSet) -> void:
 	if pip_rects.is_empty():
 		return
-	var katana := KatanaMechanic.is_katana(moves)
-	weapon_label.visible = katana
+	# Chaque arme affiche sa mécanique : points (pips_label) et/ou jauge (gauge_label), voir son JSON.
+	var pl := str(moves.mech("pips_label", ""))
+	var gl := str(moves.mech("gauge_label", ""))
+	weapon_label.visible = pl != ""
+	weapon_label.text = pl
 	for k in pip_rects.size():
-		pip_rects[k].visible = katana
+		pip_rects[k].visible = pl != ""
 		var on := k < f.weapon_pips
 		pip_rects[k].color = moves.style_color("aura", Color(1, 0.1, 0.1)) if on else Color(0.15, 0.12, 0.12, 0.8)
-	var e := float(f.weapon_gauge) / 100.0
+	gauge_label.visible = gl != ""
+	gauge_label.text = gl
+	edge_fill.get_parent().visible = gl != ""
+	var gmax := float(moves.mech("gauge_max", 100))
+	var e := clampf(float(f.weapon_gauge) / gmax, 0.0, 1.0)
 	edge_fill.size.x = 158.0 * e
-	edge_fill.color = Color(0.85, 0.88, 0.95).lerp(Color(0.55, 0.05, 0.05), 1.0 - e)
+	if WeaponMechanics.type_of(moves) == "kanabo":
+		var full := e >= 1.0
+		edge_fill.color = Color(1.0, 0.35, 0.05) if not full else Color(1.0, 0.85, 0.3).lerp(Color(1, 0.3, 0.05), 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.015))
+	else:
+		edge_fill.color = Color(0.85, 0.88, 0.95).lerp(Color(0.55, 0.05, 0.05), 1.0 - e)
+	lost_label.visible = f.weapon_lost > 0
+	lost_label.text = "Tantō lancé — retour dans %.1f s" % (f.weapon_lost / 60.0)
 	var mx := float(int(moves.mech("stance_max_ticks", 90)))
 	charge_fill.size.x = 120.0 * clampf(float(f.charge_ticks) / mx, 0.0, 1.0) if f.in_stance else 0.0
 
@@ -468,6 +488,20 @@ func blood_splash() -> void:
 		tw.tween_interval(0.45)
 		tw.tween_property(r, "modulate:a", 0.0, 0.35)
 		tw.tween_callback(r.queue_free)
+
+
+## Fumée sur l'écran (Fumigène du tantō adverse) : la vue est voilée ~1,5 s.
+func smoke_screen() -> void:
+	var r := ColorRect.new()
+	r.color = Color(0.62, 0.6, 0.66, 0.85)
+	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(r)
+	move_child(r, 0)
+	var tw := r.create_tween()
+	tw.tween_interval(0.7)
+	tw.tween_property(r, "color:a", 0.0, 0.9)
+	tw.tween_callback(r.queue_free)
 
 
 ## Voile rouge quand le joueur se fait toucher.

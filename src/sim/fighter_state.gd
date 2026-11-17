@@ -74,6 +74,9 @@ var floor_y: float = 0.0        ## hauteur du sol sous le combattant (plateforme
 var ground_friction: float = 1.0 ## < 1 : sol glissant (or, glace...)
 var potions_left: int = 1
 var bind_presses: int = 0       ## clics pendant un bind (clash)
+var slow_ticks: int = 0         ## ralenti (jarret...)
+var buff_unblockable: bool = false   ## prochain coup LAME imparable (rugissement)
+var weapon_lost: int = 0        ## arme lancée : ticks avant son retour (coups affaiblis)
 
 var prev_buttons: int = 0
 
@@ -132,6 +135,9 @@ func copy() -> FighterState:
 	c.ground_friction = ground_friction
 	c.potions_left = potions_left
 	c.bind_presses = bind_presses
+	c.slow_ticks = slow_ticks
+	c.buff_unblockable = buff_unblockable
+	c.weapon_lost = weapon_lost
 	c.prev_buttons = prev_buttons
 	return c
 
@@ -158,6 +164,14 @@ func action_name() -> String:
 
 func is_crouching() -> bool:
 	return crouch > 3
+
+
+## Sous super-armure en ce moment ? (moves = son arme)
+func has_armor(moves: MoveSet) -> bool:
+	if action != Action.ATTACK:
+		return false
+	var m := moves.get_move(move_id)
+	return not m.is_empty() and MoveSet.in_range(m["armor"], move_tick)
 
 
 ## Peut-il se défendre (garde / parry) ?

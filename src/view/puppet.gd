@@ -15,7 +15,8 @@ var coat_back: Node3D
 var scarf_a: Node3D
 var scarf_b: Node3D
 var plume: Node3D
-var katana: Node3D
+var katana: Node3D        ## l'arme (quel que soit son modèle)
+var offhand: Node3D       ## seconde arme (doubles tantō)
 var arm_r: MeshInstance3D
 var arm_l: MeshInstance3D
 var hand_r: MeshInstance3D
@@ -29,7 +30,7 @@ var _lean: Vector2 = Vector2.ZERO
 var _twist: float = 0.0
 
 
-func setup(main_color: Color, accent: Color) -> void:
+func setup(main_color: Color, accent: Color, model: String = "katana") -> void:
 	var skin := Color(0.93, 0.76, 0.6)
 	var hair := Color(0.07, 0.05, 0.07)
 	var inner := Color(0.9, 0.86, 0.78)
@@ -96,9 +97,13 @@ func setup(main_color: Color, accent: Color) -> void:
 	for ex in [-0.05, 0.05]:
 		_mesh(head, MeshUtil.box(Vector3(0.055, 0.022, 0.02), accent.lightened(0.5), 2.5), Vector3(ex, 0.0, -0.135))
 
-	katana = MeshUtil.katana()
+	katana = MeshUtil.weapon(model)
 	torso.add_child(katana)
 	_collect(katana)
+	if katana.get_meta("dual", false):
+		offhand = MeshUtil.weapon(model)
+		torso.add_child(offhand)
+		_collect(offhand)
 	hand_r = _loose(MeshUtil.sphere(0.055, glove))
 	hand_l = _loose(MeshUtil.sphere(0.055, glove))
 	arm_r = _loose(MeshUtil.box(Vector3(0.1, 0.1, 1.0), main_color))
@@ -197,6 +202,12 @@ func apply(cur: FighterState, alpha: float, delta: float, moves: MoveSet, crouch
 	katana.transform = Transform3D(WeaponAnim.basis_from_dir(_pose[1]), chest + grip * 1.2)
 	var ga := katana.transform * Vector3(0, -0.07, 0)
 	var gb := katana.transform * Vector3(0, 0.07, 0)
+	if offhand:
+		var od: Vector3 = _pose[1]
+		offhand.transform = Transform3D(WeaponAnim.basis_from_dir(Vector3(-od.x, od.y, od.z)),
+				chest + Vector3(-grip.x * 0.85, grip.y - 0.04, grip.z + 0.05) * 1.2)
+		gb = katana.transform * Vector3.ZERO
+		ga = offhand.transform * Vector3.ZERO
 	hand_r.position = gb
 	hand_l.position = ga
 	_limb(arm_r, Vector3(0.25 * side, 0.55, 0), gb)

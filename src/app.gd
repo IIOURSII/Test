@@ -129,7 +129,15 @@ func start_game() -> void:
 		background = null
 	game = Game.new()
 	add_child(game)
-	game.setup(post, sfx, {"weapon": _choice["weapon"], "class": _choice["class"], "map": _choice["map"],
+	# Arme de l'adversaire : au hasard en Duel et en 1 contre 1, la même que toi en bac à sable.
+	var ids: Array = []
+	for w in roster.get("weapons", []):
+		if bool(w.get("available", false)):
+			ids.append(str(w["id"]))
+	var w2 := str(_choice["weapon"])
+	if _choice.get("mode", "sandbox") != "sandbox" and not ids.is_empty():
+		w2 = ids[randi() % ids.size()]
+	game.setup(post, sfx, {"weapon": _choice["weapon"], "weapon2": w2, "class": _choice["class"], "map": _choice["map"],
 			"mode": _choice.get("mode", "sandbox"), "difficulty": _choice.get("difficulty", "normal")})
 	game.quit_to_menu.connect(_end_game)
 

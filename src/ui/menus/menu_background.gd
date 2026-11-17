@@ -76,7 +76,8 @@ func _build(map_id: String) -> void:
 		st.guard = 1 if i == 0 else -1
 		var fv := FighterView.new()
 		_scene.add_child(fv)
-		fv.setup(cfg, Game.PLAYER_COLORS[i], 1, Game.PLAYER_ACCENTS[i])
+		var models := ["katana", "tanto", "naginata", "kanabo"]
+		fv.setup(cfg, Game.PLAYER_COLORS[i], 1, Game.PLAYER_ACCENTS[i], models[randi() % models.size()])
 		fv.view_camera = camera
 		_views.append([fv, st])
 

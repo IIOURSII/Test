@@ -112,6 +112,12 @@ static func _tick_timers(f: FighterState, cfg: Dictionary) -> void:
 		f.burst_buffer -= 1
 	if f.cancel_buffer > 0:
 		f.cancel_buffer -= 1
+	if f.slow_ticks > 0:
+		f.slow_ticks -= 1
+	if f.weapon_lost > 0:
+		f.weapon_lost -= 1
+		if f.weapon_lost == 0:
+			f.pending_fx = "weapon_back"
 	f.ticks_since_hit += 1
 	f.burst_gauge = mini(f.burst_gauge + int(bd["gauge_regen"]), int(bd["gauge_max"]))
 	if f.action == FighterState.Action.BLOCK or f.action == FighterState.Action.BLOCKSTUN:
@@ -331,6 +337,18 @@ static func _step_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, wish:
 	if m["restore_edge"] and f.move_tick == int(m["startup"]) + int(m["active"]):
 		f.weapon_gauge = 100
 		f.pending_fx = "chiburi"
+	for imp in m["impulses"]:
+		if int(imp["at"]) == f.move_tick:
+			f.vel.y = float(imp["up"])
+			f.on_ground = false
+	if int(m["gain_pips"]) != 0 and f.move_tick == int(m["startup"]):
+		WeaponMechanics.gain_pips(f, moves, int(m["gain_pips"]))
+	if m["buff"] == "unblockable" and f.move_tick == int(m["startup"]):
+		f.buff_unblockable = true
+		f.pending_fx = "buff"
+	if int(m["throw_weapon"]) > 0 and not (m["projectile"] as Dictionary).is_empty() \
+			and f.move_tick == int(m["projectile"]["at"]):
+		f.weapon_lost = int(m["throw_weapon"])
 	if int(m["heal_at"]) == f.move_tick:
 		var heal := roundi(float(f.max_hp) * float(cfg["potion"]["heal_ratio"]))
 		f.hp = mini(f.hp + heal, f.max_hp)
@@ -428,6 +446,8 @@ static func _step_hitstun(f: FighterState, mv: Dictionary) -> void:
 static func _step_walk(f: FighterState, mv: Dictionary, wish: Vector3, speed_mult: float = 1.0) -> void:
 	var crouched := f.crouch > CROUCH_TICKS / 2
 	var speed: float = (mv["crouch_speed"] if crouched else mv["walk_speed"]) * speed_mult
+	if f.slow_ticks > 0:
+		speed *= 0.55
 	var hv := Vector3(f.vel.x, 0.0, f.vel.z)
 	if f.on_ground:
 		hv = hv.move_toward(wish * speed, float(mv["ground_accel"]) * f.ground_friction * DT)

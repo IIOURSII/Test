@@ -10,7 +10,9 @@ var camera: Camera3D
 var arms_camera: Camera3D       ## caméra du petit monde des bras (rendu en pixels, voir setup)
 var arms_overlay: CanvasLayer
 var arms: Node3D
-var katana: Node3D
+var katana: Node3D               ## l'arme en main (quel que soit son modèle)
+var offhand: Node3D              ## seconde arme (doubles tantō)
+var _trail_range: Vector2 = Vector2(0.2, 0.92)
 var forearm_main: MeshInstance3D
 var forearm_off: MeshInstance3D
 var hand_main: MeshInstance3D
@@ -37,7 +39,8 @@ var _turn: float = 0.0       ## demi-tour visuel (contre dos tourné)
 
 
 ## sleeve/accent : couleurs du manteau et de l'écharpe du joueur (mêmes que son sprite).
-func setup(cfg: Dictionary, sleeve: Color = Color(0.22, 0.26, 0.45), accent: Color = Color(0.95, 0.75, 0.3)) -> void:
+func setup(cfg: Dictionary, sleeve: Color = Color(0.22, 0.26, 0.45), accent: Color = Color(0.95, 0.75, 0.3),
+		model: String = "katana") -> void:
 	_cfg = cfg
 	camera = Camera3D.new()
 	camera.fov = BASE_FOV
@@ -83,8 +86,12 @@ func setup(cfg: Dictionary, sleeve: Color = Color(0.22, 0.26, 0.45), accent: Col
 	arms = Node3D.new()
 	arms_camera.add_child(arms)
 
-	katana = MeshUtil.katana()
+	katana = MeshUtil.weapon(model)
 	arms.add_child(katana)
+	_trail_range = katana.get_meta("trail", Vector2(0.2, 0.92))
+	if katana.get_meta("dual", false):
+		offhand = MeshUtil.weapon(model)
+		arms.add_child(offhand)
 	trail = SlashTrail.new()
 	arms.add_child(trail)
 	trail.setup()
@@ -145,7 +152,7 @@ func _setup_aura() -> void:
 	mm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_embers.material_override = mm
 	_embers.emitting = false
-	_embers.position = Vector3(0, 0.53, 0)
+	_embers.position = (katana.get_node("Blade") as Node3D).position
 	katana.add_child(_embers)
 
 
@@ -291,7 +298,7 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 		var e0 := s0 + int(m2["active"]) + 3
 		if m2["button"] == "blade" and not (m2["hitboxes"] as Array).is_empty() \
 				and cur.move_tick >= s0 and cur.move_tick <= e0 and cur.hitstop == 0:
-			trail.add_point(katana.transform * Vector3(0, 0.2, 0), katana.transform * Vector3(0, 0.92, 0))
+			trail.add_point(katana.transform * Vector3(0, _trail_range.x, 0), katana.transform * Vector3(0, _trail_range.y, 0))
 	_update_weapon_identity(cur, moves, delta)
 	trail.tick(delta, cur.hitstop > 0)
 
@@ -329,6 +336,13 @@ func _apply_pose(pose: Array, bob: Vector3) -> void:
 	var side := 1.0 if grip.x >= 0.0 else -1.0
 	var grip_a := katana.transform * Vector3(0, -0.07, 0)
 	var grip_b := katana.transform * Vector3(0, 0.07, 0)
+	if offhand:
+		# Doubles tantō : la seconde lame est tenue en miroir dans l'autre main.
+		var og := Vector3(-grip.x * 0.85, grip.y - 0.04, grip.z + 0.05)
+		var od := Vector3(-dir.x, dir.y, dir.z)
+		offhand.transform = Transform3D(WeaponAnim.basis_from_dir(od), og + bob)
+		grip_b = katana.transform * Vector3.ZERO
+		grip_a = offhand.transform * Vector3.ZERO
 	hand_main.position = grip_b
 	hand_off.position = grip_a
 	_place_forearm(forearm_main, grip_b, Vector3(0.42 * side, -0.75, -0.05))

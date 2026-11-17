@@ -18,7 +18,9 @@
     "charge_max_bonus": 1.0,
     "stance_counter_damage": 130,
     "stance_counter_stun": 32,
-    "stance_counter_hitstop": 18
+    "stance_counter_hitstop": 18,
+    "pips_label": "残心",
+    "gauge_label": "刃"
   },
   "mechanic_desc": "[b]LA VOIE DU SABRE[/b] — [b]Posture Iai[/b] : 421 LAME, garde le clic enfoncé pour rester rengainé (charge), relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture. [b]Zanshin 残心[/b] (3 points max) : gagné par parry, counter-hit, punish et contre en posture ; perdu si on se fait counter. 1 point : appuie sur A pendant un coup qui a touché ou été bloqué pour annuler sa recovery (et changer de garde). 3 points : relâcher le Iai déclenche [b]Issen 一閃[/b], coupe éclair traversante qui brise la garde (seul un parry l'arrête). [b]Tranchant 刃[/b] : la lame s'émousse et se tache quand elle est bloquée ou parée (moins de dégâts) ; le Chiburi (321 LAME) la nettoie.",
   "style": {
@@ -874,5 +876,7 @@
       "recovery": 18,
       "hitboxes": []
     }
-  }
+  },
+  "model": "katana",
+  "ai_reach": 1.0
 }

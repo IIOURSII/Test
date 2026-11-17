@@ -44,6 +44,9 @@ func poll(world: SimWorld, mi: int, fi: int) -> InputFrame:
 	var d := foe.pos - me.pos
 	d.y = 0.0
 	var dist := d.length()
+	var true_dist := dist
+	# Les décisions se prennent en distance "relative à l'allonge" de son arme (naginata = loin, tantō = près).
+	dist = dist / maxf(world.movesets[mi].ai_reach, 0.3)
 
 	# Visée : tourne vers l'adversaire à vitesse limitée, avec une petite imprécision.
 	if _t % 30 == 0:
@@ -69,7 +72,7 @@ func poll(world: SimWorld, mi: int, fi: int) -> InputFrame:
 		return _frame(0)
 
 	# Défense face à une attaque qui arrive.
-	var threat := _threat(world, foe, fi, dist)
+	var threat := _threat(world, foe, fi, true_dist)
 	if not threat.is_empty():
 		var key := "%s:%d" % [foe.move_id, world.tick - foe.move_tick]
 		if key != _seen_key:

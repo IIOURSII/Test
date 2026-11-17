@@ -26,7 +26,7 @@ var _layer_bit: int = 1
 
 
 ## layer_bit : couche de rendu du sprite (pour qu'un joueur ne voie pas son propre sprite).
-func setup(cfg: Dictionary, color: Color, layer_bit: int = 1, accent: Color = Color(0, 0, 0, 0)) -> void:
+func setup(cfg: Dictionary, color: Color, layer_bit: int = 1, accent: Color = Color(0, 0, 0, 0), model: String = "katana") -> void:
 	_cfg = cfg
 	_layer_bit = layer_bit
 	if accent.a == 0.0:
@@ -51,7 +51,7 @@ func setup(cfg: Dictionary, color: Color, layer_bit: int = 1, accent: Color = Co
 	_vp.add_child(sun)
 	puppet = Puppet.new()
 	_vp.add_child(puppet)
-	puppet.setup(color, accent)
+	puppet.setup(color, accent, model)
 	_cam = Camera3D.new()
 	_cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	_cam.keep_aspect = Camera3D.KEEP_HEIGHT

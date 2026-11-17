@@ -1,29 +1,102 @@
 {
   "_aide": "Écran de sélection : armes et classes secondaires. available = jouable maintenant. Les stats (0..5) ne servent qu'à l'affichage.",
   "weapons": [
-    {"id": "katana", "name": "Katana", "kanji": "刀", "archetype": "Le duelliste", "available": true,
-     "mechanic": "La Voie du sabre", "desc": "Équilibré. Posture Iai, Zanshin et Tranchant : récompense la lecture et la précision.",
-     "stats": {"Vitesse": 3, "Allonge": 3, "Puissance": 3, "Mobilité": 3}},
-    {"id": "tanto", "name": "Doubles Tantō", "kanji": "双", "archetype": "L'assassin", "available": false,
-     "mechanic": "Bientôt", "desc": "Très rapide, très mobile, faible allonge. Harcèlement et petits coups.",
-     "stats": {"Vitesse": 5, "Allonge": 1, "Puissance": 2, "Mobilité": 5}},
-    {"id": "naginata", "name": "Naginata", "kanji": "薙", "archetype": "Le gardien", "available": false,
-     "mechanic": "Bientôt", "desc": "Grande allonge et contrôle de l'espace, faible au corps à corps.",
-     "stats": {"Vitesse": 2, "Allonge": 5, "Puissance": 3, "Mobilité": 2}},
-    {"id": "kanabo", "name": "Kanabō", "kanji": "鬼", "archetype": "La brute", "available": false,
-     "mechanic": "Bientôt", "desc": "Très lent, armure sur certains coups, dégâts énormes.",
-     "stats": {"Vitesse": 1, "Allonge": 3, "Puissance": 5, "Mobilité": 1}}
+    {
+      "id": "katana",
+      "name": "Katana",
+      "kanji": "刀",
+      "archetype": "Le duelliste",
+      "available": true,
+      "mechanic": "La Voie du sabre",
+      "desc": "Équilibré. Posture Iai, Zanshin et Tranchant : récompense la lecture et la précision.",
+      "stats": {
+        "Vitesse": 3,
+        "Allonge": 3,
+        "Puissance": 3,
+        "Mobilité": 3
+      }
+    },
+    {
+      "id": "tanto",
+      "name": "Doubles Tantō",
+      "kanji": "双",
+      "archetype": "L'assassin",
+      "available": true,
+      "mechanic": "Danse des lames",
+      "desc": "Très rapide, très mobile, faible allonge. Harcèlement et petits coups.",
+      "stats": {
+        "Vitesse": 5,
+        "Allonge": 1,
+        "Puissance": 2,
+        "Mobilité": 5
+      }
+    },
+    {
+      "id": "naginata",
+      "name": "Naginata",
+      "kanji": "薙",
+      "archetype": "Le gardien",
+      "available": true,
+      "mechanic": "Ma-ai",
+      "desc": "Grande allonge et contrôle de l'espace, faible au corps à corps.",
+      "stats": {
+        "Vitesse": 2,
+        "Allonge": 5,
+        "Puissance": 3,
+        "Mobilité": 2
+      }
+    },
+    {
+      "id": "kanabo",
+      "name": "Kanabō",
+      "kanji": "鬼",
+      "archetype": "La brute",
+      "available": true,
+      "mechanic": "Ikari",
+      "desc": "Très lent, armure sur certains coups, dégâts énormes.",
+      "stats": {
+        "Vitesse": 1,
+        "Allonge": 3,
+        "Puissance": 5,
+        "Mobilité": 1
+      }
+    }
   ],
   "classes": [
-    {"id": "aucune", "name": "Aucune", "kanji": "無", "available": true,
-     "desc": "L'arme pure, sans modification."},
-    {"id": "ronin", "name": "Rōnin", "kanji": "浪", "available": false,
-     "desc": "Concept : sans maître, il gagne en puissance quand il est mené au score. Joue le retour."},
-    {"id": "shinobi", "name": "Shinobi", "kanji": "忍", "available": false,
-     "desc": "Concept : dashs plus discrets et feintes renforcées. Joue l'esquive et le mixup."},
-    {"id": "sohei", "name": "Sōhei", "kanji": "僧", "available": false,
-     "desc": "Concept : moine guerrier, garde plus solide et parry plus large. Joue la défense et la punition."},
-    {"id": "onmyoji", "name": "Onmyōji", "kanji": "陰", "available": false,
-     "desc": "Concept : sceaux posés au sol qui contrôlent l'espace. Joue le placement."}
+    {
+      "id": "aucune",
+      "name": "Aucune",
+      "kanji": "無",
+      "available": true,
+      "desc": "L'arme pure, sans modification."
+    },
+    {
+      "id": "ronin",
+      "name": "Rōnin",
+      "kanji": "浪",
+      "available": false,
+      "desc": "Concept : sans maître, il gagne en puissance quand il est mené au score. Joue le retour."
+    },
+    {
+      "id": "shinobi",
+      "name": "Shinobi",
+      "kanji": "忍",
+      "available": false,
+      "desc": "Concept : dashs plus discrets et feintes renforcées. Joue l'esquive et le mixup."
+    },
+    {
+      "id": "sohei",
+      "name": "Sōhei",
+      "kanji": "僧",
+      "available": false,
+      "desc": "Concept : moine guerrier, garde plus solide et parry plus large. Joue la défense et la punition."
+    },
+    {
+      "id": "onmyoji",
+      "name": "Onmyōji",
+      "kanji": "陰",
+      "available": false,
+      "desc": "Concept : sceaux posés au sol qui contrôlent l'espace. Joue le placement."
+    }
   ]
 }

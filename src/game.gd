@@ -20,7 +20,10 @@ var cfg: Dictionary
 var controls: Dictionary
 var world: SimWorld
 var prev_states: Array[FighterState] = []
-var katana: MoveSet
+var katana: MoveSet              ## arme du joueur 1
+var weapon2: MoveSet             ## arme de l'adversaire / du joueur 2
+var weapon2_path: String = ""
+var _proj_nodes: Dictionary = {} ## id de projectile -> Node3D affiché
 var weapon_path: String = "res://data/weapons/katana.json"
 var map: MapData
 var map_view: MapView
@@ -75,6 +78,8 @@ func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 	ControlsSetup.apply(controls)
 	weapon_path = "res://data/weapons/%s.json" % str(p.get("weapon", "katana"))
 	katana = _load_weapon(weapon_path)
+	weapon2_path = "res://data/weapons/%s.json" % str(p.get("weapon2", p.get("weapon", "katana")))
+	weapon2 = _load_weapon(weapon2_path)
 
 	var map_id := str(p.get("map", "training"))
 	map = MapData.from_json(map_id, DataLoader.load_json("res://data/maps/%s.json" % map_id))
@@ -101,14 +106,14 @@ func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 	for i in 2:
 		var fv := FighterView.new()
 		add_child(fv)
-		fv.setup(cfg, PLAYER_COLORS[i], 1 << (1 + i), PLAYER_ACCENTS[i])
+		fv.setup(cfg, PLAYER_COLORS[i], 1 << (1 + i), PLAYER_ACCENTS[i], (katana if i == 0 else weapon2).model)
 		fighter_views.append(fv)
 	if mode == "local":
 		_setup_split()
 	else:
 		var v := FirstPersonView.new()
 		add_child(v)
-		v.setup(cfg, PLAYER_COLORS[0], PLAYER_ACCENTS[0])
+		v.setup(cfg, PLAYER_COLORS[0], PLAYER_ACCENTS[0], katana.model)
 		fp_views.append(v)
 	for k in fp_views.size():
 		fp_views[k].camera.cull_mask = 0xFFFFF & ~(1 << (1 + k))   # on ne voit pas son propre sprite
@@ -144,16 +149,16 @@ func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 func _names() -> Array:
 	match mode:
 		"duel_ai":
-			return ["TOI", "IA — %s" % difficulty.to_upper()]
+			return ["TOI · %s" % katana.weapon_name, "IA %s · %s" % [difficulty.to_upper(), weapon2.weapon_name]]
 		"local":
-			return ["JOUEUR 1", "JOUEUR 2"]
+			return ["J1 · %s" % katana.weapon_name, "J2 · %s" % weapon2.weapon_name]
 	return ["TOI", "MANNEQUIN"]
 
 
 func _new_world() -> void:
 	world = SimWorld.new(cfg, map)
 	world.add_fighter(map.spawns[0], map.spawn_yaw(0), katana)
-	world.add_fighter(map.spawns[1], map.spawn_yaw(1), katana)
+	world.add_fighter(map.spawns[1], map.spawn_yaw(1), weapon2)
 	if mode == "sandbox":
 		world.training_dummies.assign([0, 1])
 	prev_states = world.snapshot()
@@ -182,7 +187,7 @@ func _setup_split() -> void:
 		cont.add_child(vp)
 		var v := FirstPersonView.new()
 		vp.add_child(v)
-		v.setup(cfg, PLAYER_COLORS[k], PLAYER_ACCENTS[k])
+		v.setup(cfg, PLAYER_COLORS[k], PLAYER_ACCENTS[k], (katana if k == 0 else weapon2).model)
 		fp_views.append(v)
 
 
@@ -249,10 +254,36 @@ func _process(delta: float) -> void:
 		fighter_views[i].update_view(prev_states[i], world.fighters[i], a, delta, world.movesets[i])
 	if cine_cam:
 		cine_cam.position += cine_cam.global_transform.basis.x * delta * 0.35
+	_sync_projectiles(delta)
 	debug_draw.redraw(world, show_debug and mode == "sandbox")
 	hud.update_hud(world, show_debug and mode == "sandbox", collector.is_captured(), dummy.mode_name())
 	hud.set_rounds(score, ROUNDS_TO_WIN)
 	move_list.refresh(world.movesets[0], world.fighters[0].guard, controls)
+
+
+## Affiche les projectiles de la simulation (tantō lancé qui tournoie, cailloux, balle de golf).
+func _sync_projectiles(delta: float) -> void:
+	var alive := {}
+	for pj in world.projectiles:
+		var id: int = pj["id"]
+		alive[id] = true
+		var n: Node3D = _proj_nodes.get(id)
+		if n == null:
+			match str(pj["kind"]):
+				"tanto":
+					n = MeshUtil.weapon("tanto")
+				"golf":
+					n = MeshUtil.sphere(0.22, Color(0.9, 0.88, 0.82))
+				_:
+					n = MeshUtil.sphere(0.09, Color(0.5, 0.48, 0.45))
+			add_child(n)
+			_proj_nodes[id] = n
+		n.global_position = pj["pos"]
+		n.rotate_object_local(Vector3.RIGHT, delta * (25.0 if pj["kind"] == "tanto" else 8.0))
+	for id in _proj_nodes.keys():
+		if not alive.has(id):
+			(_proj_nodes[id] as Node3D).queue_free()
+			_proj_nodes.erase(id)
 
 
 # ------------------------------------------------------------ déroulé d'un match
@@ -401,7 +432,7 @@ func _view_of(i: int) -> FighterView:
 ##     impact frame TRÈS courte (2-3 images), sceau kanji, lignes de vitesse.
 func _play_event(e: Dictionary) -> void:
 	var kind: String = e["type"]
-	if kind in ["hit", "block", "parry", "guard_break", "guard_crush", "iai_counter"]:
+	if kind in ["hit", "block", "parry", "guard_break", "guard_crush", "iai_counter", "armor"]:
 		_play_contact(kind, e)
 		return
 	var fi: int = e.get("fighter", -1)
@@ -423,6 +454,38 @@ func _play_event(e: Dictionary) -> void:
 				sfx.play("swish_heavy" if e["heavy"] else "swish", -4.0)
 			else:
 				sfx.play("swish_soft", -8.0)
+		# --- Armes ---
+		"throw":
+			sfx.play("swish", -4.0, 0.1)
+		"proj_break":
+			fx.impact(e["pos"], Vector3.UP, 0.4, "block")
+			sfx.play("clang" if e.get("shield", false) else "thock", -6.0)
+		"teleport":
+			fx.smoke(e["from"], 1.0)
+			fx.smoke(e["pos"], 0.8)
+			sfx.play("dash", -2.0)
+			if fi == 0:
+				collector.look_yaw = world.fighters[0].yaw_rad()
+			elif fi == 1 and pad:
+				pad.look_yaw = world.fighters[1].yaw_rad()
+		"smoke":
+			fx.smoke(e["pos"], 1.6)
+			sfx.play("dash", -6.0, 0.2)
+			# La fumée gêne la vue de l'ADVERSAIRE de celui qui l'a lancée.
+			if mode == "local" or fi != 0:
+				hud.smoke_screen()
+		"buff":
+			sfx.play("hit_heavy", 2.0, 0.0)
+			fx.ring(e["pos"], ms.style_color("aura", Color(1, 0.4, 0.05)), 2.5, false, 0.4)
+			hud.popup("RUGISSEMENT", ms.style_color("kanji_color", Color(0.9, 0.35, 0.05)), "吼")
+			if _fp(fi):
+				_fp(fi).aura(ms.style_color("aura", Color(1, 0.4, 0.05)), 3.0)
+		"pips_gain":
+			sfx.play("chin", -4.0, 0.05)
+			if _fp(fi):
+				hud.popup("JONGLAGE ×%d" % world.fighters[fi].weapon_pips, ms.style_color("kanji_color", Color(0.6, 0.2, 0.85)), "舞")
+		"weapon_back":
+			sfx.play("click", -4.0)
 		# --- Lecture et annulations ---
 		"tell":
 			# Reflet sur la lame adverse juste avant le coup : à toi de le lire.
@@ -557,6 +620,14 @@ func _play_contact(kind: String, e: Dictionary) -> void:
 	var kanji_col := ms.style_color("kanji_color", Color(0.85, 0.1, 0.1))
 	var metal: bool = ms.style.get("metal_ring", false)
 	match kind:
+		"armor":
+			fx.impact(pos, e["dir"], 0.6, "block")
+			fx.star(pos, Color(1.0, 0.6, 0.2), 0.8, 0.1)
+			sfx.play("clang", -1.0, 0.0)
+			sfx.play("thock", -4.0)
+			if dv:
+				dv.flash(0.6, Color(1.0, 0.6, 0.2), false)
+			hud.popup("ARMURE", Color(1.0, 0.6, 0.2), "鎧")
 		"hit":
 			var blade: bool = e["button"] == "blade"
 			var counter: bool = e["counter"]
@@ -590,6 +661,18 @@ func _play_contact(kind: String, e: Dictionary) -> void:
 				post.punch(0.12, 0.05)
 			if dv:
 				dv.flash(power, Color(1.0, 0.3, 0.2) if counter else Color.WHITE)
+			var mfx: String = e.get("mech_fx", "")
+			if mfx == "tipper":
+				hud.popup("POINTE", ms.style_color("kanji_color", Color(0.2, 0.5, 0.9)), "間")
+			elif mfx == "fury_release":
+				hud.popup("FUREUR", ms.style_color("kanji_color", Color(0.9, 0.35, 0.05)), "怒")
+				post.impact_frame(Color(1.0, 0.45, 0.05), true, 0.05)
+			elif mfx == "juggle_release":
+				hud.popup("DANSE", ms.style_color("kanji_color", Color(0.6, 0.2, 0.85)), "舞")
+			elif e.get("slow", false):
+				hud.popup("JARRET", Color(0.7, 0.7, 0.8), "遅")
+			if e.get("unblockable", false):
+				hud.popup("IMPARABLE", Color(1.0, 0.4, 0.1), "破")
 			if e.has("wrong_height"):
 				hud.popup(str(e["wrong_height"]), Color(1.0, 0.6, 0.2), "崩")
 			elif e["punish"] and not counter:
@@ -701,8 +784,9 @@ func _reload_data() -> void:
 		push_warning("Fichier d'arme invalide : coups précédents conservés.")
 	else:
 		katana = _load_weapon(weapon_path)
-		for i in world.movesets.size():
-			world.movesets[i] = katana
+		weapon2 = _load_weapon(weapon2_path)
+		world.movesets[0] = katana
+		world.movesets[1] = weapon2
 	var gfx := DataLoader.load_json(GRAPHICS_CFG)
 	if not gfx.is_empty():
 		post.apply(gfx, post.current_preset)

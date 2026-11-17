@@ -127,6 +127,48 @@ func embers(pos: Vector3, amount: int, color: Color) -> void:
 			[Color(1, 1, 0.8, 1), color, Color(color.r, color.g * 0.4, 0.0, 0)], 90.0, 0.45, Vector3(0, 1.0, 0))
 
 
+## Nuage de fumée (tantō) : grosses boules grises qui gonflent et s'estompent.
+func smoke(pos: Vector3, size: float) -> void:
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.explosiveness = 0.85
+	p.amount = int(18 * size)
+	p.lifetime = 1.4
+	var sm := SphereMesh.new()
+	sm.radius = 0.35
+	sm.height = 0.7
+	sm.radial_segments = 8
+	sm.rings = 4
+	p.mesh = sm
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	p.material_override = m
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.5 * size
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 0.3
+	p.initial_velocity_max = 1.4 * size
+	p.gravity = Vector3(0, 0.4, 0)
+	p.damping_min = 1.0
+	p.damping_max = 2.0
+	p.scale_amount_min = 0.8 * size
+	p.scale_amount_max = 1.8 * size
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 0.4))
+	sc.add_point(Vector2(1, 1.3))
+	p.scale_amount_curve = sc
+	var g := Gradient.new()
+	g.colors = PackedColorArray([Color(0.75, 0.73, 0.78, 0.85), Color(0.5, 0.48, 0.55, 0.0)])
+	p.color_ramp = g
+	add_child(p)
+	p.position = pos
+	p.emitting = true
+	get_tree().create_timer(2.2).timeout.connect(p.queue_free)
+
+
 ## Onde du Burst.
 func burst_wave(pos: Vector3) -> void:
 	_light(pos, Color(1.0, 0.8, 0.3), 2.4)
