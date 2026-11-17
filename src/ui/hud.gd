@@ -30,6 +30,10 @@ var _cjk_font: SystemFont
 var damage_flash: ColorRect
 var dummy_label: Label
 var _popup_tw: Tween
+var bind_box: Control
+var bind_fill_me: ColorRect
+var bind_fill_them: ColorRect
+var potion_label: Label
 
 var _history: Array = []        ## [{"dir": int, "btn": String, "n": int}, ...] le plus récent en premier
 var _shown_move: String = ""    ## dernier coup affiché (reste visible après la fin)
@@ -92,6 +96,46 @@ func setup() -> void:
 	popup_label.position = Vector2(148, 52)
 	popup_label.size = Vector2(300, 40)
 	popup_box.add_child(popup_label)
+
+	# Jauge de bind : qui martèle le plus vite.
+	bind_box = Control.new()
+	bind_box.set_anchors_preset(Control.PRESET_CENTER)
+	bind_box.offset_left = -260
+	bind_box.offset_right = 260
+	bind_box.offset_top = 120
+	bind_box.offset_bottom = 190
+	bind_box.visible = false
+	add_child(bind_box)
+	var bl := _make_label(26)
+	bl.text = "CLIQUE !  CLIQUE !  CLIQUE !"
+	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bl.size = Vector2(520, 34)
+	bind_box.add_child(bl)
+	var bbg := ColorRect.new()
+	bbg.color = Color(0, 0, 0, 0.7)
+	bbg.position = Vector2(0, 40)
+	bbg.size = Vector2(520, 18)
+	bind_box.add_child(bbg)
+	bind_fill_me = ColorRect.new()
+	bind_fill_me.color = Color(1.0, 0.85, 0.4)
+	bind_fill_me.position = Vector2(0, 42)
+	bind_fill_me.size = Vector2(260, 14)
+	bind_box.add_child(bind_fill_me)
+	bind_fill_them = ColorRect.new()
+	bind_fill_them.color = Color(0.8, 0.15, 0.12)
+	bind_fill_them.position = Vector2(260, 42)
+	bind_fill_them.size = Vector2(260, 14)
+	bind_box.add_child(bind_fill_them)
+
+	potion_label = _make_label(15)
+	potion_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	potion_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	potion_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	potion_label.offset_left -= 20
+	potion_label.offset_right -= 20
+	potion_label.offset_top -= 20
+	potion_label.offset_bottom -= 20
+	add_child(potion_label)
 
 	dummy_label = _make_label(16)
 	dummy_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -337,10 +381,19 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_m
 		burst_fill[i].color = Color(1.0, 0.85, 0.3) if f.burst_gauge >= int(bmax) else Color(0.6, 0.45, 0.15)
 	dummy_label.text = "Mannequin : %s   (F2 pour changer)" % dummy_mode
 	_update_weapon_panel(p, moves)
+	potion_label.text = "Potion (R) : %d     Provocation : T" % p.potions_left
+	var d0 := world.fighters[1]
+	bind_box.visible = p.action == FighterState.Action.BIND
+	if bind_box.visible:
+		var lead := float(int(world.cfg["clash"]["bind_lead"]))
+		var k := clampf(0.5 + float(p.bind_presses - d0.bind_presses) / (2.0 * lead), 0.0, 1.0)
+		bind_fill_me.size.x = 520.0 * k
+		bind_fill_them.position.x = 520.0 * k
+		bind_fill_them.size.x = 520.0 * (1.0 - k)
 
 	crosshair.visible = mouse_captured
 	if mouse_captured:
-		hint_label.text = "Tab : liste des coups  |  F1 : debug  |  F6 : recharger les données  |  F7 : filtre rétro  |  Échap : libérer la souris"
+		hint_label.text = "Tab : liste des coups  |  F1 : debug  |  F2 : mannequin  |  F6 : recharger  |  F7 : filtre  |  Échap : pause"
 	else:
 		hint_label.text = "Souris libérée : clique dans la fenêtre pour reprendre"
 

@@ -16,6 +16,9 @@ uniform float contrast = 1.12;
 uniform float brightness = 1.0;
 uniform vec3 tint = vec3(1.0, 0.92, 0.82);
 uniform vec3 shadow_tint = vec3(0.05, 0.04, 0.07);
+uniform float use_palette = 0.0;
+uniform sampler2D palette_tex : filter_nearest;
+uniform int palette_size = 0;
 
 uniform float impact = 0.0;
 uniform vec3 impact_color = vec3(1.0);
@@ -92,9 +95,30 @@ void fragment() {
 		c += (n - 0.5) * grain;
 		int bx = int(mod(cell.x, 4.0));
 		int by = int(mod(cell.y, 4.0));
-		float b = BAYER[by * 4 + bx] / 16.0 - 0.5;
-		float lv = max(color_levels - 1.0, 1.0);
-		c = floor(c * lv + 0.5 + b * dither_strength) / lv;
+		float bay = BAYER[by * 4 + bx] / 16.0;
+		if (use_palette > 0.5 && palette_size > 1) {
+			// Palette fixe : on prend les 2 couleurs les plus proches et on trame entre elles.
+			c = clamp(c, 0.0, 1.0);
+			float d1 = 1e9;
+			float d2 = 1e9;
+			vec3 p1 = c;
+			vec3 p2 = c;
+			for (int i = 0; i < 64; i++) {
+				if (i >= palette_size) { break; }
+				vec3 pc = texelFetch(palette_tex, ivec2(i, 0), 0).rgb;
+				vec3 df = c - pc;
+				float d = dot(df * df, vec3(0.30, 0.59, 0.11));
+				if (d < d1) { d2 = d1; p2 = p1; d1 = d; p1 = pc; }
+				else if (d < d2) { d2 = d; p2 = pc; }
+			}
+			float s1 = sqrt(d1);
+			float s2 = sqrt(d2);
+			float t = s1 / (s1 + s2 + 1e-5);
+			c = (bay < t * dither_strength) ? p2 : p1;
+		} else {
+			float lv = max(color_levels - 1.0, 1.0);
+			c = floor(c * lv + 0.5 + (bay - 0.5) * dither_strength) / lv;
+		}
 	}
 
 	COLOR = vec4(clamp(c, 0.0, 1.0), 1.0);

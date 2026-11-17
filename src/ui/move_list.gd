@@ -60,6 +60,8 @@ func refresh(moves: MoveSet, guard: int, controls: Dictionary, force: bool = fal
 	s += "[color=#9fc8ff][b]DÉFENSE[/b] — maintenir [b]E[/b] = garde (de face seulement). Appuyer sur [b]E[/b] juste avant l'impact = [b]PARRY[/b] (l'adversaire est ouvert). "
 	s += "Rater un parry bloque le suivant un moment. Les overheads se bloquent DEBOUT, les coups bas ACCROUPI.\n"
 	s += "[b]Triangle[/b] : la LAME bat le POMMEAU (en cas d'échange), le POMMEAU brise la GARDE, la GARDE bat la LAME.\n"
+	s += "[b]CLASH[/b] = deux lames actives qui se touchent : les lames se croisent, MARTÈLE le clic gauche pour repousser l'adversaire.\n"
+	s += "[b]POTION[/b] = [b]R[/b] (1 par combat, longue à boire : si tu es touché, elle est perdue).   [b]PROVOCATION[/b] = [b]T[/b] (ne sert à rien).\n"
 	s += "[b]COUNTER[/b] = toucher pendant le startup adverse (bonus).  [b]BURST[/b] = [b]F[/b] quand tu encaisses un combo (jauge dorée pleine) : repousse l'adversaire, mais peut être bloqué.[/color]\n\n"
 
 	for input in MoveSet.INPUT_ORDER:

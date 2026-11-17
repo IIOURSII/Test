@@ -6,6 +6,8 @@ extends CanvasLayer
 var rect: ColorRect
 var mat: ShaderMaterial
 var retro: bool = true
+var current_preset: String = ""
+var _gfx: Dictionary = {}
 
 var _impact: float = 0.0
 var _impact_hold: float = 0.0
@@ -15,7 +17,7 @@ var _lines: float = 0.0
 var _lines_hold: float = 0.0
 
 
-func setup(gfx: Dictionary) -> void:
+func setup(gfx: Dictionary, preset: String = "") -> void:
 	layer = -1
 	rect = ColorRect.new()
 	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -24,22 +26,56 @@ func setup(gfx: Dictionary) -> void:
 	mat.shader = load("res://shaders/pixel_post.gdshader")
 	rect.material = mat
 	add_child(rect)
-	apply(gfx)
+	apply(gfx, preset)
 
 
-func apply(gfx: Dictionary) -> void:
-	retro = bool(gfx.get("enabled", true))
-	mat.set_shader_parameter("pixel_size", maxf(float(gfx.get("pixel_size", 4)), 1.0))
-	mat.set_shader_parameter("color_levels", float(gfx.get("color_levels", 7)))
-	mat.set_shader_parameter("dither_strength", float(gfx.get("dither", 1.0)))
-	mat.set_shader_parameter("vignette", float(gfx.get("vignette", 0.6)))
-	mat.set_shader_parameter("grain", float(gfx.get("grain", 0.05)))
-	mat.set_shader_parameter("saturation", float(gfx.get("saturation", 0.75)))
-	mat.set_shader_parameter("contrast", float(gfx.get("contrast", 1.1)))
-	mat.set_shader_parameter("brightness", float(gfx.get("brightness", 1.0)))
-	mat.set_shader_parameter("tint", _color(gfx.get("tint", [1, 1, 1])))
-	mat.set_shader_parameter("shadow_tint", _color(gfx.get("shadow_tint", [0, 0, 0])))
+## Applique un style ("estampe", "lavis", "retro", "aucun"...) depuis graphics.json.
+func apply(gfx: Dictionary, preset: String = "") -> void:
+	_gfx = gfx
+	var presets: Dictionary = gfx.get("presets", {})
+	var pname := preset if preset != "" else str(gfx.get("preset", "estampe"))
+	var p: Dictionary = presets.get(pname, gfx)
+	current_preset = pname
+	retro = bool(p.get("retro", p.get("enabled", true)))
+	mat.set_shader_parameter("pixel_size", maxf(float(p.get("pixel_size", 3)), 1.0))
+	mat.set_shader_parameter("color_levels", float(p.get("color_levels", 7)))
+	mat.set_shader_parameter("dither_strength", float(p.get("dither", 0.6)))
+	mat.set_shader_parameter("vignette", float(p.get("vignette", 0.5)))
+	mat.set_shader_parameter("grain", float(p.get("grain", 0.02)))
+	mat.set_shader_parameter("saturation", float(p.get("saturation", 1.0)))
+	mat.set_shader_parameter("contrast", float(p.get("contrast", 1.0)))
+	mat.set_shader_parameter("brightness", float(p.get("brightness", 1.0)))
+	mat.set_shader_parameter("tint", _color(p.get("tint", [1, 1, 1])))
+	mat.set_shader_parameter("shadow_tint", _color(p.get("shadow_tint", [0, 0, 0])))
+	var use_pal := bool(p.get("use_palette", false))
+	mat.set_shader_parameter("use_palette", 1.0 if use_pal else 0.0)
+	if use_pal:
+		_set_palette(gfx.get("palette", []))
 	_refresh()
+
+
+func preset_names() -> Array:
+	return (_gfx.get("presets", {}) as Dictionary).keys()
+
+
+func preset_label(pname: String) -> String:
+	return str((_gfx.get("presets", {}) as Dictionary).get(pname, {}).get("label", pname))
+
+
+func preset_desc(pname: String) -> String:
+	return str((_gfx.get("presets", {}) as Dictionary).get(pname, {}).get("desc", ""))
+
+
+func _set_palette(hexes: Array) -> void:
+	var n := mini(hexes.size(), 64)
+	if n < 2:
+		mat.set_shader_parameter("palette_size", 0)
+		return
+	var img := Image.create(n, 1, false, Image.FORMAT_RGB8)
+	for i in n:
+		img.set_pixel(i, 0, Color.html(str(hexes[i])))
+	mat.set_shader_parameter("palette_tex", ImageTexture.create_from_image(img))
+	mat.set_shader_parameter("palette_size", n)
 
 
 func toggle() -> void:
@@ -52,7 +88,7 @@ func _refresh() -> void:
 	# La 3D est calculée en plus basse résolution en mode rétro (plus rapide, même rendu).
 	var vp := get_viewport()
 	if vp:
-		vp.scaling_3d_scale = 0.5 if retro else 1.0
+		vp.scaling_3d_scale = 0.67 if retro else 1.0
 
 
 # ------------------------------------------------------------ effets d'impact

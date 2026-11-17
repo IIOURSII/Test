@@ -28,6 +28,8 @@ var _embers: CPUParticles3D
 var _aura_time: float = 0.0
 var _aura_color: Color = Color(1.0, 0.5, 0.15)
 var _ember_color: Color = Color(0, 0, 0, 0)
+var gourd: Node3D            ## gourde (potion) dans la main libre
+var _turn: float = 0.0       ## demi-tour visuel (contre dos tourné)
 
 
 func setup(cfg: Dictionary) -> void:
@@ -47,6 +49,17 @@ func setup(cfg: Dictionary) -> void:
 	arms.add_child(trail)
 	trail.setup()
 	_setup_aura()
+	gourd = Node3D.new()
+	var g1 := MeshUtil.sphere(0.07, Color(0.75, 0.55, 0.25))
+	var g2 := MeshUtil.sphere(0.05, Color(0.75, 0.55, 0.25))
+	g2.position = Vector3(0, 0.1, 0)
+	var cord := MeshUtil.box(Vector3(0.1, 0.015, 0.1), Color(0.6, 0.1, 0.1))
+	cord.position = Vector3(0, 0.055, 0)
+	gourd.add_child(g1)
+	gourd.add_child(g2)
+	gourd.add_child(cord)
+	gourd.visible = false
+	camera.add_child(gourd)
 
 	var skin := Color(0.85, 0.66, 0.5)
 	var sleeve := Color(0.15, 0.17, 0.25)
@@ -136,6 +149,8 @@ func _update_weapon_identity(cur: FighterState, moves: MoveSet, delta: float) ->
 	trail.tint = col.lightened(0.4) if glow > 0.35 else moves.style_color("trail", Color(1.0, 0.95, 0.85))
 	if cur.in_stance:
 		katana.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * 0.004 * (0.3 + charge)
+	if cur.action == FighterState.Action.BIND:
+		katana.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * 0.008
 
 
 ## Secousse + à-coup + zoom à l'impact (proportionnels à la puissance du coup).
@@ -153,7 +168,12 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 	var eye := lerpf(float(fcfg["eye_height"]), float(fcfg["crouch_eye_height"]), crouch_t)
 
 	position = p + Vector3(0, eye, 0)
-	rotation = Vector3(0, look_yaw, 0)
+	# Contre dos tourné (44 POMMEAU) : on se retourne vraiment (la vue fait un demi-tour).
+	var turn_target := 0.0
+	if cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id) and moves.get_move(cur.move_id)["turn_back"]:
+		turn_target = PI
+	_turn = lerp_angle(_turn, turn_target, 1.0 - exp(-delta * 9.0))
+	rotation = Vector3(0, look_yaw + _turn, 0)
 
 	_shake_time += delta
 	_shake = move_toward(_shake, 0.0, delta * 2.5)
@@ -177,6 +197,16 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 		sh.x + _kick.x + deg_to_rad(cam_off.z),
 		deg_to_rad(cam_off.x))
 	camera.position = Vector3(0, 0, -cam_off.w)
+
+	# Potion : la gourde monte à la bouche, la tête bascule en arrière.
+	gourd.visible = cur.action == FighterState.Action.ATTACK and cur.move_id == "potion"
+	if gourd.visible:
+		var pm := moves.get_move("potion")
+		var tt := float(cur.move_tick) + alpha
+		var up := smoothstep(0.0, 14.0, tt) * (1.0 - smoothstep(float(pm["total"]) - 12.0, float(pm["total"]), tt))
+		gourd.position = Vector3(-0.28, -0.55, -0.45).lerp(Vector3(-0.04, -0.12, -0.24), up)
+		gourd.rotation = Vector3(-1.6 * up, 0, 0.4 * up)
+		camera.rotation.x += deg_to_rad(14.0) * up
 
 	var dashing := cur.action == FighterState.Action.DASH
 	# Posture Iai : la vue se resserre pendant la charge (concentration).

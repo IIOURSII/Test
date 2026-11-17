@@ -42,6 +42,9 @@ func poll(world: SimWorld, self_index: int, target_index: int) -> InputFrame:
 		yaw = InputFrame.yaw_to_int(atan2(-d.x, -d.z))
 
 	var b := 0
+	# En bind (lames croisées), le mannequin martèle à rythme fixe : à toi d'aller plus vite.
+	if me.action == FighterState.Action.BIND:
+		return InputFrame.new(InputFrame.BLADE if _t % 9 < 4 else 0, yaw, 0)
 	match mode:
 		Mode.BLOCK:
 			b = InputFrame.PARRY

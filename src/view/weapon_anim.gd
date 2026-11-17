@@ -40,6 +40,8 @@ const POSES := {
 	"block": [Vector3(0.08, -0.2, -0.45), Vector3(-1.0, 0.3, -0.15)],
 	"block_low": [Vector3(0.1, -0.42, -0.45), Vector3(-1.0, -0.05, -0.2)],
 	"staggered": [Vector3(0.5, -0.08, -0.25), Vector3(0.6, 0.7, 0.4)],
+	"bind": [Vector3(0.02, -0.12, -0.42), Vector3(-0.45, 0.85, -0.3)],
+	"drink_hold": [Vector3(0.48, -0.55, -0.28), Vector3(0.1, -0.35, -1.0)],
 
 	"flick_windup": [Vector3(0.3, -0.28, -0.5), Vector3(0.0, 1.0, -0.2)],
 	"flick_end": [Vector3(0.38, -0.52, -0.6), Vector3(0.7, -0.6, -0.4)],
@@ -61,6 +63,8 @@ const ANIMS := {
 	"feint": ["sheathed", "sheathed"],
 	"sheathe": ["sheathed", "sheathed"],
 	"flick": ["flick_windup", "flick_end"],
+	"drink": ["drink_hold", "drink_hold"],
+	"twirl": ["rest", "rest"],
 }
 
 
@@ -77,6 +81,7 @@ const CAM := {
 	"pommel": {"roll": 2.0, "pitch": -2.0, "yaw": 0.0, "push": 0.16},
 	"brace": {"roll": -6.0, "pitch": -2.0, "yaw": 4.0, "push": 0.2},
 	"iai": {"roll": 6.0, "pitch": 0.0, "yaw": -10.0, "push": 0.14},
+	"sheathe": {"roll": 0.0, "pitch": -4.0, "yaw": 0.0, "push": 0.0},
 	"flick": {"roll": -4.0, "pitch": -2.0, "yaw": 0.0, "push": 0.0},
 }
 
@@ -95,6 +100,8 @@ static func pose_for_move(m: Dictionary, t: float, side: float) -> Array:
 	var rest: Array = POSES["rest"]
 	if keys.is_empty():
 		return mirror(rest, side)
+	if m.get("anim", "") == "twirl":
+		return _twirl(t, startup, active, total, side)
 
 	# [tick, pose, easing du segment qui ARRIVE sur cette clé]
 	var timeline: Array = [[0.0, rest, Ease.LINEAR]]
@@ -158,6 +165,20 @@ static func cam_curve(m: Dictionary, t: float) -> float:
 	return 1.0 - smoothstep(0.0, 1.0, r)
 
 
+## Provocation : la lame tournoie devant soi puis revient en garde.
+static func _twirl(t: float, startup: float, active: float, total: float, side: float) -> Array:
+	var rest: Array = POSES["rest"]
+	var center := [Vector3(0.28, -0.3, -0.6), Vector3(0, 1, 0)]
+	if t <= startup:
+		return mirror(lerp_pose(rest, center, smoothstep(0.0, 1.0, t / maxf(startup, 1.0))), side)
+	if t <= startup + active:
+		var a := (t - startup) / maxf(active, 1.0) * TAU * 3.0
+		var dir := Vector3(sin(a) * 0.9, cos(a), -0.25).normalized()
+		return mirror([center[0], dir], side)
+	var u := (t - startup - active) / maxf(total - startup - active, 1.0)
+	return mirror(lerp_pose(center, rest, smoothstep(0.0, 1.0, u)), side)
+
+
 ## Pose hors attaque selon l'état (garde, sonné, repos).
 static func state_pose(f: FighterState) -> Array:
 	var side := float(f.guard)
@@ -165,6 +186,8 @@ static func state_pose(f: FighterState) -> Array:
 		return mirror(POSES["block_low"] if f.is_crouching() else POSES["block"], side)
 	if f.action == FighterState.Action.HITSTUN or f.action == FighterState.Action.PARRIED:
 		return mirror(POSES["staggered"], side)
+	if f.action == FighterState.Action.BIND:
+		return mirror(POSES["bind"], side)
 	return mirror(POSES["rest"], side)
 
 

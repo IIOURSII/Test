@@ -10,6 +10,7 @@ FPS de mêlée « Japon médiéval fantasy ». Phase 1 en cours.
    puis bouton vert **Code → Download ZIP**, et décompresse-le.
 3. Lance Godot → **Importer** → choisis le fichier `project.godot` du dossier → **Importer et éditer**.
 4. Appuie sur **F5** (ou le bouton ▶ en haut à droite) pour jouer.
+5. Écran titre → **DEBUG › Bac à sable** → choix de l'arme/classe → choix de la map → combat. **Échap** = pause.
 
 ## Touches (AZERTY par défaut, modifiables dans `data/config/controls.json`)
 
@@ -23,7 +24,7 @@ FPS de mêlée « Japon médiéval fantasy ». Phase 1 en cours.
 | Lame / Pommeau | Clic gauche / Clic droit |
 | Garde (maintenir) / Parry (appui au bon moment) | E |
 | Burst (pendant un combo subi) | F |
-| Potion / Provocation | R / T *(à venir)* |
+| Potion / Provocation | R / T |
 | Mode du mannequin | F2 |
 | Filtre rétro | F7 |
 | Liste de coups | Tab |
@@ -57,8 +58,11 @@ src/sim/     ← la simulation à 60 ticks (logique pure, déterministe, aucun v
                motion_parser.gd = lecture des manips, combat.gd = hitbox/hurtbox
 src/input/   ← clavier/souris → InputFrame ; mannequin / IA
 src/view/    ← tout ce qui se voit : caméra, bras, arène, combattants
-src/ui/      ← HUD, debug
-src/main.gd  ← assemble le tout
+src/ui/      ← HUD, liste des coups ; src/ui/menus/ = écrans (titre, armes, maps, options, pause)
+src/debug/   ← TOUT ce qui est propre au mode debug (mannequin, hitbox, frame bar) : à supprimer à la fin
+data/maps/   ← les maps (une par fichier JSON, symétrie automatique)
+data/roster.json ← armes et classes secondaires affichées à l'écran de sélection
+src/app.gd   ← écrans et lancement des combats ; src/game.gd = un combat
 ```
 
 ## Avancement Phase 1
@@ -68,6 +72,7 @@ src/main.gd  ← assemble le tout
 - [x] Étape 3 (en partie) : les 20 coups du katana en version de base
 - [ ] Étape 3 (reste) : charge du Iai, feinte, contre dos tourné, sang à l'écran, overhead
 - [x] Étape 4 (en partie) : garde, parry parfait, guard break, jauge de garde, burst, counter-hit, scaling des combos, mannequin d'entraînement
-- [ ] Étape 4 (reste) : clash/bind, potion, provocation
+- [x] Étape 3 et 4 terminées : contre dos tourné, clash/bind, potion, provocation
+- [x] Menus (titre, armes + classe secondaire, maps, options, pause), 6 maps à thème + 1 de debug, filtres d'image au choix
 - [ ] Étape 5 : game feel (hitstop, shake, sons, intro, coup final)
 - [ ] Étape 6 : IA (barres de vie et liste de coups déjà là)

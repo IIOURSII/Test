@@ -13,6 +13,7 @@ var _flash: float = 0.0
 var _recoil: float = 0.0
 var _pose: Array = []
 var _flash_color: Color = Color.WHITE
+var _turn: float = 0.0
 
 
 func setup(cfg: Dictionary, color: Color) -> void:
@@ -58,7 +59,11 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: flo
 	if frozen and cur.action == FighterState.Action.HITSTUN:
 		tremble = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.05
 	position += tremble
-	rotation = Vector3(tilt, yaw, 0)
+	var turn_target := 0.0
+	if cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id) and moves.get_move(cur.move_id)["turn_back"]:
+		turn_target = PI
+	_turn = lerp_angle(_turn, turn_target, 1.0 - exp(-delta * 9.0))
+	rotation = Vector3(tilt, yaw + _turn, 0)
 
 	var crouch_t := lerpf(prev.crouch, cur.crouch, alpha) / float(FighterLogic.CROUCH_TICKS)
 	var h := lerpf(float(fcfg["height"]), float(fcfg["crouch_height"]), crouch_t)

@@ -1,5 +1,7 @@
+class_name Game
 extends Node3D
-## Point d'entrée : assemble la simulation, les inputs, les visuels et l'UI.
+## Un combat : assemble la simulation, les inputs, les visuels et l'UI de jeu.
+## Créé par App (src/app.gd) avec les choix des menus (arme, classe, map, mode).
 ##
 ## Chaque tick logique (60/s, _physics_process) :
 ##   1. on garde une copie de l'état précédent (pour lisser l'affichage)
@@ -8,9 +10,10 @@ extends Node3D
 ## Chaque image affichée (_process, autant que l'écran le permet) :
 ##   on dessine l'état interpolé entre le tick précédent et le tick actuel.
 
+signal quit_to_menu
+
 const COMBAT_CFG := "res://data/config/combat.json"
 const CONTROLS_CFG := "res://data/config/controls.json"
-const KATANA := "res://data/weapons/katana.json"
 const GRAPHICS_CFG := "res://data/config/graphics.json"
 
 var cfg: Dictionary
@@ -18,38 +21,53 @@ var controls: Dictionary
 var world: SimWorld
 var prev_states: Array[FighterState] = []
 var katana: MoveSet
+var weapon_path: String = "res://data/weapons/katana.json"
+var map: MapData
+var map_view: MapView
+var params: Dictionary = {}
 
 var collector: InputCollector
-var dummy: DummyController
+var dummy: DummyController          # DEBUG (mode bac à sable)
 var fp_view: FirstPersonView
 var dummy_view: FighterView
-var debug_draw: DebugDraw
+var debug_draw: DebugDraw           # DEBUG
 var hud: Hud
 var move_list: MoveList
 var fx: Fx
 var sfx: Sfx
 var post: PostProcess
+var pause_menu: PauseMenu
+var options_menu: OptionsMenu
+var paused: bool = false
 var show_debug: bool = true
 var _pending_events: Array = []
 
 
-func _ready() -> void:
+## params : {"weapon": "katana", "class": "aucune", "map": "colisee", "mode": "sandbox"}
+func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
+	params = p
+	post = post_process
+	sfx = shared_sfx
 	cfg = DataLoader.load_json(COMBAT_CFG)
 	controls = DataLoader.load_json(CONTROLS_CFG)
 	ControlsSetup.apply(controls)
-	katana = _load_weapon(KATANA)
+	weapon_path = "res://data/weapons/%s.json" % str(p.get("weapon", "katana"))
+	katana = _load_weapon(weapon_path)
 
-	ArenaBuilder.build(self, cfg)
+	var map_id := str(p.get("map", "training"))
+	map = MapData.from_json(map_id, DataLoader.load_json("res://data/maps/%s.json" % map_id))
+	map_view = ArenaBuilder.build(self, map)
 
-	world = SimWorld.new(cfg)
-	world.add_fighter(Vector3(0, 0, 4), 0.0, katana)   # 0 = joueur (regarde vers -Z)
-	world.add_fighter(Vector3(0, 0, -1), PI, katana)   # 1 = mannequin (regarde vers le joueur)
+	world = SimWorld.new(cfg, map)
+	world.add_fighter(map.spawns[0], map.spawn_yaw(0), katana)   # 0 = joueur
+	world.add_fighter(map.spawns[1], map.spawn_yaw(1), katana)   # 1 = mannequin (DEBUG)
 	world.training_dummies = [0, 1]
 	prev_states = world.snapshot()
 
 	collector = InputCollector.new()
 	add_child(collector)
-	collector.setup(controls, 0.0)
+	collector.setup(controls, map.spawn_yaw(0))
+	collector.sensitivity = float(Settings.get_value("sensitivity"))
 	dummy = DummyController.new()
 
 	fp_view = FirstPersonView.new()
@@ -75,17 +93,14 @@ func _ready() -> void:
 	fx = Fx.new()
 	add_child(fx)
 	fx.setup()
-	sfx = Sfx.new()
-	add_child(sfx)
-	sfx.setup()
-	post = PostProcess.new()
-	add_child(post)
-	post.setup(DataLoader.load_json(GRAPHICS_CFG))
 
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	hud.popup(map.name.to_upper(), Color(0.95, 0.9, 0.8), map.kanji)
 
 
 func _physics_process(_delta: float) -> void:
+	if paused:
+		return
 	prev_states = world.snapshot()
 	var player_input := collector.poll()
 	var inputs: Array = [
@@ -99,6 +114,9 @@ func _physics_process(_delta: float) -> void:
 
 func _process(delta: float) -> void:
 	var a := Engine.get_physics_interpolation_fraction()
+	if paused:
+		a = 0.0
+	map_view.update_tick(float(world.tick) + a)
 	for e in _pending_events:
 		_play_event(e)
 	_pending_events.clear()
@@ -110,10 +128,11 @@ func _process(delta: float) -> void:
 	move_list.refresh(world.movesets[0], world.fighters[0].guard, controls)
 
 
-## Charge une arme + les coups communs (Burst).
+## Charge une arme + les coups communs (Burst, Potion).
 func _load_weapon(path: String) -> MoveSet:
 	var ms := MoveSet.from_json(DataLoader.load_json(path))
 	ms.add_move("burst", cfg.get("burst", {}).get("move", {}))
+	ms.add_move("potion", cfg.get("potion", {}).get("move", {}))
 	return ms
 
 
@@ -177,6 +196,68 @@ func _play_event(e: Dictionary) -> void:
 			if fi == 0:
 				post.speed_lines(0.35, 0.06, ms.style_color("aura", Color(1, 0.1, 0.1)))
 				fp_view.aura(ms.style_color("aura", Color(1, 0.1, 0.1)), 0.5)
+		# --- Clash / bind ---
+		"clash":
+			fx.impact(e["pos"], e["dir"], 1.0, "parry")
+			fx.star(e["pos"], Color.WHITE, 2.2, 0.2)
+			fx.ring(e["pos"], Color(1.0, 0.95, 0.85), 2.5, false, 0.35, 0.04)
+			sfx.play("parry", 4.0, 0.0)
+			sfx.play("clang", 0.0)
+			post.impact_frame(Color(0.95, 0.95, 0.95), true, 0.06)
+			post.speed_lines(0.9, 0.6)
+			post.punch(1.0, 0.6)
+			hud.popup("CLASH", Color(1.0, 0.95, 0.85), "鍔")
+			fp_view.on_impact(1.0, true)
+			# La vue se tourne face à l'adversaire.
+			collector.look_yaw = world.fighters[0].yaw_rad()
+			collector.look_pitch = 0.0
+		"bind_end":
+			var w: int = e["winner"]
+			fx.impact(e["pos"], e["dir"], 1.0, "block")
+			fx.star(e["pos"], Color(1.0, 0.85, 0.4), 1.6, 0.15)
+			sfx.play("hit_heavy", 0.0)
+			sfx.play("clang", -2.0)
+			post.punch(0.8, 0.5)
+			if w == 0:
+				hud.popup("BIND GAGNÉ", Color(1.0, 0.85, 0.35), "勝")
+				fp_view.aura(Color(1.0, 0.7, 0.15), 1.5)
+			elif w == 1:
+				hud.popup("BIND PERDU", Color(0.7, 0.7, 0.75), "負")
+				hud.hurt_flash(0.5)
+			else:
+				hud.popup("ÉGALITÉ", Color(0.85, 0.85, 0.85), "互")
+		# --- Map ---
+		"wall_bounce":
+			fx.impact(e["pos"], e["dir"], 0.7, "block")
+			fx.star(e["pos"], Color(1.0, 0.9, 0.7), 0.7, 0.1)
+			sfx.play("clang", -1.0)
+			if fi == 0:
+				hud.popup("REBOND", Color(0.8, 0.8, 0.85), "壁")
+				fp_view.on_impact(0.6, false)
+		"burn":
+			fx.embers(e["pos"], 6, Color(1.0, 0.45, 0.1))
+			sfx.play("thock", -14.0, 0.2)
+			if fi == 0:
+				hud.hurt_flash(0.15)
+		"geyser_hit":
+			fx.embers(e["pos"], 30, Color(1.0, 0.5, 0.1))
+			fx.ring(e["pos"], Color(1.0, 0.45, 0.1), 2.0, false, 0.35)
+			sfx.play("hit_heavy", -2.0)
+			if fi == 0:
+				hud.hurt_flash(0.8)
+				fp_view.on_impact(0.9, false)
+			hud.popup("GEYSER", Color(1.0, 0.5, 0.15), "噴")
+		# --- Objets ---
+		"potion":
+			sfx.play("swish_soft", -6.0)
+		"potion_heal":
+			fx.embers(e["pos"], 20, Color(0.5, 1.0, 0.6))
+			sfx.play("chin", -2.0, 0.0)
+			if fi == 0:
+				hud.popup("SOIN", Color(0.55, 1.0, 0.65), "癒")
+		"taunt":
+			sfx.play("ring", -8.0, 0.0)
+			hud.popup("PROVOCATION", Color(0.95, 0.9, 0.8), "挑")
 		"chiburi":
 			sfx.play("swish_soft", -2.0)
 			sfx.play("ring", -10.0, 0.02)
@@ -275,7 +356,10 @@ func _play_contact(kind: String, e: Dictionary) -> void:
 			post.impact_frame(Color(0.95, 0.95, 0.95), true, 0.05)
 			post.speed_lines(0.6, 0.1)
 			post.punch(1.0, 0.8)
-			hud.popup("IAI", kanji_col, "返")
+			if e.get("style", "iai") == "back":
+				hud.popup("NŌTŌ", kanji_col, "背")
+			else:
+				hud.popup("IAI", kanji_col, "返")
 			power = 1.0
 		"guard_break", "guard_crush":
 			fx.impact(pos, e["dir"], 1.0, "pommel")
@@ -298,8 +382,11 @@ func _play_contact(kind: String, e: Dictionary) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if paused:
+		return
 	if event.is_action_pressed("ui_cancel"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		get_viewport().set_input_as_handled()
+		_open_pause()
 	elif event.is_action_pressed("debug"):
 		show_debug = not show_debug
 	elif event.is_action_pressed("move_list"):
@@ -328,15 +415,46 @@ func _reload_data() -> void:
 		controls = new_controls
 		ControlsSetup.apply(controls)
 		collector.setup(controls, collector.look_yaw)
-	var kd := DataLoader.load_json(KATANA)
+		collector.sensitivity = float(Settings.get_value("sensitivity"))
+	var kd := DataLoader.load_json(weapon_path)
 	if kd.is_empty():
-		push_warning("katana.json invalide : coups précédents conservés.")
+		push_warning("Fichier d'arme invalide : coups précédents conservés.")
 	else:
-		katana = _load_weapon(KATANA)
+		katana = _load_weapon(weapon_path)
 		for i in world.movesets.size():
 			world.movesets[i] = katana
 	var gfx := DataLoader.load_json(GRAPHICS_CFG)
 	if not gfx.is_empty():
-		post.apply(gfx)
+		post.apply(gfx, post.current_preset)
 	move_list.refresh(katana, world.fighters[0].guard, controls, true)
 	print("Données rechargées.")
+
+
+# ------------------------------------------------------------ pause
+
+func _open_pause() -> void:
+	paused = true
+	collector.set_process_input(false)   # sinon un clic dans le menu recapturerait la souris
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	pause_menu = PauseMenu.new()
+	add_child(pause_menu)
+	pause_menu.setup()
+	pause_menu.action.connect(_on_pause_action)
+
+
+func _on_pause_action(id: String) -> void:
+	match id:
+		"resume":
+			pause_menu.queue_free()
+			paused = false
+			collector.set_process_input(true)
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		"options":
+			options_menu = OptionsMenu.new()
+			add_child(options_menu)
+			options_menu.setup(post)
+			options_menu.closed.connect(func() -> void:
+				options_menu.queue_free()
+				collector.sensitivity = float(Settings.get_value("sensitivity")))
+		"menu":
+			quit_to_menu.emit()
