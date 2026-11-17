@@ -6,7 +6,7 @@ extends Node3D
 ## d'où on le regarde (arrondi à 45°), puis affiché sur un panneau toujours face à la caméra.
 ## Toutes les animations (coups, garde, sonné...) marchent donc automatiquement.
 
-const VP := 128              ## résolution du sprite (pixels)
+const VP := 72               ## résolution du sprite (pixels) : bas = gros pixels
 const SPRITE_H := 2.7        ## hauteur couverte par le sprite (mètres)
 const DIRECTIONS := 8
 
@@ -21,11 +21,14 @@ var _flash: float = 0.0
 var _flash_color: Color = Color.WHITE
 var _recoil: float = 0.0
 var _turn: float = 0.0
+var _ghost_t: float = 0.0
+var _layer_bit: int = 1
 
 
 ## layer_bit : couche de rendu du sprite (pour qu'un joueur ne voie pas son propre sprite).
 func setup(cfg: Dictionary, color: Color, layer_bit: int = 1, accent: Color = Color(0, 0, 0, 0)) -> void:
 	_cfg = cfg
+	_layer_bit = layer_bit
 	if accent.a == 0.0:
 		accent = color.lightened(0.35) if color.get_luminance() < 0.35 else color.darkened(0.45)
 	_vp = SubViewport.new()
@@ -94,6 +97,27 @@ func flash(power: float = 1.0, color: Color = Color.WHITE, recoil: bool = true) 
 		_recoil = maxf(_recoil, 0.6 + 0.6 * power)
 
 
+## Image rémanente : une copie figée du sprite qui s'efface sur place.
+func ghost(tint: Color, life: float = 0.28) -> void:
+	var img := _vp.get_texture().get_image()
+	if img == null or get_parent() == null:
+		return
+	var g := Sprite3D.new()
+	g.texture = ImageTexture.create_from_image(img)
+	g.pixel_size = sprite.pixel_size
+	g.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	g.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	g.shaded = false
+	g.double_sided = true
+	g.modulate = tint
+	g.layers = _layer_bit
+	get_parent().add_child(g)
+	g.global_position = sprite.global_position
+	var tw := g.create_tween()
+	tw.tween_property(g, "modulate:a", 0.0, life)
+	tw.tween_callback(g.queue_free)
+
+
 func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: float, moves: MoveSet) -> void:
 	var fcfg: Dictionary = _cfg["fighter"]
 	var frozen := cur.hitstop > 0
@@ -114,7 +138,17 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: flo
 	_flash = move_toward(_flash, 0.0, delta * 8.0)
 	var tilt := (0.12 if cur.action == FighterState.Action.HITSTUN else 0.0) + 0.3 * _recoil
 	var crouch_t := lerpf(prev.crouch, cur.crouch, alpha) / float(FighterLogic.CROUCH_TICKS)
-	puppet.apply(cur, alpha, delta, moves, crouch_t, tilt, _flash, _flash_color)
+	var local_vel := Basis(Vector3.UP, yaw).inverse() * cur.vel
+	puppet.apply(cur, alpha, delta, moves, crouch_t, tilt, _flash, _flash_color, local_vel)
+
+	# Images rémanentes pendant les dashs (style anime).
+	if cur.action == FighterState.Action.DASH:
+		_ghost_t += delta
+		if _ghost_t > 0.045:
+			_ghost_t = 0.0
+			ghost(Color(0.75, 0.85, 1.0, 0.45))
+	else:
+		_ghost_t = 1.0
 
 	# Angle de vue arrondi à 45° : c'est ce qui donne l'effet "sprite qui tourne".
 	var cam := view_camera if view_camera else get_viewport().get_camera_3d()

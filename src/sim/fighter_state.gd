@@ -74,6 +74,8 @@ var floor_y: float = 0.0        ## hauteur du sol sous le combattant (plateforme
 var ground_friction: float = 1.0 ## < 1 : sol glissant (or, glace...)
 var potions_left: int = 1
 var bind_presses: int = 0       ## clics pendant un bind (clash)
+var ki: int = 1000              ## Ki : se dépense pour annuler une action (dash/attaque)
+var ki_delay: int = 0           ## ticks avant que le Ki recommence à remonter
 
 var prev_buttons: int = 0
 
@@ -132,6 +134,8 @@ func copy() -> FighterState:
 	c.ground_friction = ground_friction
 	c.potions_left = potions_left
 	c.bind_presses = bind_presses
+	c.ki = ki
+	c.ki_delay = ki_delay
 	c.prev_buttons = prev_buttons
 	return c
 

@@ -9,19 +9,19 @@
     "crouch_eye_height": 1.0
   },
   "movement": {
-    "walk_speed": 3.0,
+    "walk_speed": 3.2,
     "crouch_speed": 1.5,
     "ground_accel": 24.0,
     "air_accel": 7.0,
     "jump_velocity": 6.8,
     "gravity": 21.0,
-    "dash_speed": 15.0,
-    "dash_ticks": 11,
-    "dash_slowdown_ticks": 4,
+    "dash_speed": 17.0,
+    "dash_ticks": 10,
+    "dash_slowdown_ticks": 3,
     "dash_end_speed_ratio": 0.3,
-    "dash_cooldown_ticks": 20,
+    "dash_cooldown_ticks": 14,
     "allow_air_dash": true,
-    "dash_recovery_ticks": 6,
+    "dash_recovery_ticks": 5,
     "_aide_dash": "dash_recovery_ticks = ticks de récupération après un dash (on ne peut ni attaquer ni redasher) : dasher est un engagement."
   },
   "attack": {
@@ -31,6 +31,23 @@
     "friction": 6.0,
     "steer_ratio": 0.3,
     "segment_accel": 200.0
+  },
+  "cancel": {
+    "_aide": "ANNULATIONS (Ki 気). Tout peut être annulé : dash pendant un dash, attaque pendant une attaque, dash pendant une attaque (feinte/fuite). Chaque annulation coûte du Ki (jauge blanche, max ki_max) qui se recharge de regen par tick, après regen_delay ticks sans dépense. min_tick = on ne peut pas annuler les tout premiers ticks d'une action. Mettre un coût à 0 = annulation gratuite.",
+    "ki_max": 1000,
+    "regen": 7,
+    "regen_delay": 35,
+    "min_tick": 3,
+    "dash_from_dash": 250,
+    "dash_from_attack": 300,
+    "attack_from_attack": 350,
+    "attack_on_hit": 200,
+    "attack_from_dash": 120
+  },
+  "telegraph": {
+    "_aide": "Reflet sur la lame (lisibilité) : apparaît ce nombre de ticks avant la sortie du coup, pour les coups dont le startup est au moins min_startup.",
+    "before": 8,
+    "min_startup": 12
   },
   "guard": {
     "_aide": "GARDE (maintenir E) et PARRY (appuyer sur E juste avant l'impact). angle_deg = la garde ne protège que de face. parry_window = durée (ticks) du parry après l'appui ; parry_lockout = délai avant de pouvoir retenter (anti-spam). Le POMMEAU brise la garde. Les coups 'overhead' doivent être bloqués debout, les coups 'low' accroupi. guard_* = jauge de garde : bloquer la remplit, pleine = garde brisée (crush).",

@@ -97,6 +97,11 @@ func poll(world: SimWorld, mi: int, fi: int) -> InputFrame:
 					return _frame(InputFrame.PARRY | crouch)
 				"dodge":
 					return _frame(InputFrame.BACK)
+	# Son coup est bloqué : il annule en backdash au Ki pour rester sûr (s'il en a).
+	if me.action == FighterState.Action.ATTACK and foe.action == FighterState.Action.BLOCKSTUN \
+			and me.ki >= 300 and rng.randf() < _f("punish", 0.6) * 0.15:
+		_queue.clear()
+		return _frame(InputFrame.DASH | InputFrame.BACK)
 	if _hold_block > 0 and foe.action == FighterState.Action.ATTACK:
 		_hold_block -= 1
 		return _frame(InputFrame.PARRY)
@@ -129,8 +134,12 @@ func poll(world: SimWorld, mi: int, fi: int) -> InputFrame:
 		_strafe = [-1.0, 0.0, 1.0][rng.randi() % 3]
 	if dist > 3.0:
 		b |= InputFrame.FORWARD
-		if dist > 7.0 and rng.randf() < 0.02:
-			_queue = [InputFrame.DASH | InputFrame.FORWARD, InputFrame.DASH | InputFrame.FORWARD]
+		if dist > 6.0 and rng.randf() < 0.025:
+			# Approche en dashs enchaînés (annulés au Ki) si la jauge le permet.
+			var dd := InputFrame.DASH | InputFrame.FORWARD
+			_queue = [dd, dd]
+			if me.ki >= 400:
+				_queue.append_array([InputFrame.FORWARD, InputFrame.FORWARD, InputFrame.FORWARD, InputFrame.FORWARD, dd, dd])
 	elif dist < 1.6:
 		b |= InputFrame.BACK
 	if _strafe > 0.5:

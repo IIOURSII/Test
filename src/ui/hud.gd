@@ -17,6 +17,7 @@ var hp_fill: Array[ColorRect] = []
 var hp_text: Array[Label] = []
 var guard_fill: Array[ColorRect] = []
 var burst_fill: Array[ColorRect] = []
+var ki_fill: Array[ColorRect] = []
 var popup_label: Label
 var popup_box: Control
 var popup_kanji: Label
@@ -211,25 +212,25 @@ func setup() -> void:
 func _make_weapon_panel(parent: Control) -> void:
 	weapon_label = _make_label(18)
 	weapon_label.add_theme_font_override("font", _cjk_font)
-	weapon_label.position = Vector2(0, 58)
+	weapon_label.position = Vector2(0, 66)
 	weapon_label.text = "残心"
 	parent.add_child(weapon_label)
 	for k in 3:
 		var p := ColorRect.new()
 		p.size = Vector2(16, 16)
-		p.position = Vector2(48 + k * 22, 64)
+		p.position = Vector2(48 + k * 22, 72)
 		p.rotation = PI / 4.0
 		p.pivot_offset = Vector2(8, 8)
 		parent.add_child(p)
 		pip_rects.append(p)
 	var e := _make_label(18)
 	e.add_theme_font_override("font", _cjk_font)
-	e.position = Vector2(140, 58)
+	e.position = Vector2(140, 66)
 	e.text = "刃"
 	parent.add_child(e)
 	var bg := ColorRect.new()
 	bg.color = Color(0, 0, 0, 0.6)
-	bg.position = Vector2(166, 66)
+	bg.position = Vector2(166, 74)
 	bg.size = Vector2(160, 10)
 	parent.add_child(bg)
 	edge_fill = ColorRect.new()
@@ -238,7 +239,7 @@ func _make_weapon_panel(parent: Control) -> void:
 	bg.add_child(edge_fill)
 	charge_fill = ColorRect.new()
 	charge_fill.color = Color(1.0, 0.95, 0.85)
-	charge_fill.position = Vector2(340, 66)
+	charge_fill.position = Vector2(340, 74)
 	charge_fill.size = Vector2(0, 10)
 	parent.add_child(charge_fill)
 
@@ -294,8 +295,15 @@ func _make_hp_bar(i: int, title: String, x_offset: float) -> void:
 	bu.size = Vector2(0, 5)
 	bg.add_child(bu)
 	burst_fill.append(bu)
+	# Ki (blanc) : se dépense pour annuler une action.
+	var kf := ColorRect.new()
+	kf.color = Color(0.85, 0.95, 1.0)
+	kf.position = Vector2(0, 38)
+	kf.size = Vector2(0, 6)
+	bg.add_child(kf)
+	ki_fill.append(kf)
 	var label := _make_label(14)
-	label.position = Vector2(6, 38)
+	label.position = Vector2(6, 46)
 	bg.add_child(label)
 	if i == 0:
 		_make_weapon_panel(bg)
@@ -426,6 +434,9 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_m
 		guard_fill[i].size.x = BAR_W * clampf(float(f.guard_gauge) / gmax, 0.0, 1.0)
 		burst_fill[i].size.x = BAR_W * clampf(float(f.burst_gauge) / bmax, 0.0, 1.0)
 		burst_fill[i].color = Color(1.0, 0.85, 0.3) if f.burst_gauge >= int(bmax) else Color(0.6, 0.45, 0.15)
+		var kmax := float(world.cfg.get("cancel", {}).get("ki_max", 1000))
+		ki_fill[i].size.x = BAR_W * clampf(float(f.ki) / kmax, 0.0, 1.0)
+		ki_fill[i].color = Color(0.85, 0.95, 1.0) if f.ki_delay == 0 else Color(0.5, 0.6, 0.7)
 	dummy_label.text = "Mannequin : %s   (F2 pour changer)" % dummy_mode
 	dummy_label.visible = training
 	_update_weapon_panel(p, moves)

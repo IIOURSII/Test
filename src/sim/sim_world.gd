@@ -27,6 +27,7 @@ func add_fighter(pos: Vector3, yaw_radians: float, moves: MoveSet) -> FighterSta
 	f.max_hp = int(cfg["fighter"]["max_hp"])
 	f.hp = f.max_hp
 	f.potions_left = int(cfg.get("potion", {}).get("uses", 1))
+	f.ki = int(cfg.get("cancel", {}).get("ki_max", 1000))
 	fighters.append(f)
 	movesets.append(moves)
 	return f
@@ -109,6 +110,12 @@ func _emit_action_events() -> void:
 			var m := movesets[i].get_move(f.move_id)
 			if m.is_empty():
 				continue
+			# Reflet sur la lame juste avant la sortie du coup : on peut LIRE l'attaque.
+			var tg: Dictionary = cfg.get("telegraph", {})
+			if not tg.is_empty() and not (m["hitboxes"] as Array).is_empty() and int(m["startup"]) >= int(tg.get("min_startup", 12)) \
+					and f.move_tick == int(m["startup"]) - int(tg.get("before", 8)) and not f.in_stance:
+				events.append({"type": "tell", "fighter": i, "button": m["button"],
+						"pos": f.pos + f.forward() * 0.5 + Vector3(0.25 * f.guard, 1.55, 0)})
 			if f.move_id == "burst":
 				if f.move_tick == 1:
 					events.append({"type": "burst", "fighter": i, "pos": f.pos + Vector3(0, 1.1, 0)})
@@ -640,3 +647,4 @@ func _training_regen() -> void:
 			f.hp = f.max_hp
 			f.burst_gauge = int(cfg["burst"]["gauge_max"])
 			f.potions_left = int(cfg.get("potion", {}).get("uses", 1))
+	f.ki = int(cfg.get("cancel", {}).get("ki_max", 1000))

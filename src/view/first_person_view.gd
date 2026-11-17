@@ -15,6 +15,8 @@ var forearm_main: MeshInstance3D
 var forearm_off: MeshInstance3D
 var hand_main: MeshInstance3D
 var hand_off: MeshInstance3D
+var wrap_main: MeshInstance3D
+var wrap_off: MeshInstance3D
 
 var _cfg: Dictionary
 var _bob_phase: float = 0.0
@@ -34,7 +36,8 @@ var gourd: Node3D            ## gourde (potion) dans la main libre
 var _turn: float = 0.0       ## demi-tour visuel (contre dos tourné)
 
 
-func setup(cfg: Dictionary) -> void:
+## sleeve/accent : couleurs du manteau et de l'écharpe du joueur (mêmes que son sprite).
+func setup(cfg: Dictionary, sleeve: Color = Color(0.22, 0.26, 0.45), accent: Color = Color(0.95, 0.75, 0.3)) -> void:
 	_cfg = cfg
 	camera = Camera3D.new()
 	camera.fov = BASE_FOV
@@ -50,7 +53,7 @@ func setup(cfg: Dictionary) -> void:
 	var cont := SubViewportContainer.new()
 	cont.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	cont.stretch = true
-	cont.stretch_shrink = 3
+	cont.stretch_shrink = 4   # même taille de pixel que le filtre "Estampe"
 	cont.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	cont.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	arms_overlay.add_child(cont)
@@ -98,16 +101,20 @@ func setup(cfg: Dictionary) -> void:
 	gourd.visible = false
 	arms_camera.add_child(gourd)
 
-	var skin := Color(0.85, 0.66, 0.5)
-	var sleeve := Color(0.15, 0.17, 0.25)
-	hand_main = MeshUtil.sphere(0.045, skin)
-	hand_off = MeshUtil.sphere(0.045, skin)
+	# Gants sombres, manches du manteau, bandes de poignet à la couleur de l'écharpe.
+	var glove := Color(0.12, 0.1, 0.1)
+	hand_main = MeshUtil.sphere(0.05, glove)
+	hand_off = MeshUtil.sphere(0.05, glove)
 	arms.add_child(hand_main)
 	arms.add_child(hand_off)
-	forearm_main = MeshUtil.box(Vector3(0.075, 0.075, 1.0), sleeve)
-	forearm_off = MeshUtil.box(Vector3(0.075, 0.075, 1.0), sleeve)
+	forearm_main = MeshUtil.box(Vector3(0.1, 0.1, 1.0), sleeve)
+	forearm_off = MeshUtil.box(Vector3(0.1, 0.1, 1.0), sleeve)
 	arms.add_child(forearm_main)
 	arms.add_child(forearm_off)
+	wrap_main = MeshUtil.box(Vector3(0.085, 0.085, 0.06), accent)
+	wrap_off = MeshUtil.box(Vector3(0.085, 0.085, 0.06), accent)
+	arms.add_child(wrap_main)
+	arms.add_child(wrap_off)
 
 
 ## Aura : la lame s'embrase et laisse des braises (après un parry ou un counter).
@@ -326,6 +333,15 @@ func _apply_pose(pose: Array, bob: Vector3) -> void:
 	hand_off.position = grip_a
 	_place_forearm(forearm_main, grip_b, Vector3(0.42 * side, -0.75, -0.05))
 	_place_forearm(forearm_off, grip_a, Vector3(-0.05 * side, -0.8, 0.05))
+	_place_wrap(wrap_main, grip_b, Vector3(0.42 * side, -0.75, -0.05))
+	_place_wrap(wrap_off, grip_a, Vector3(-0.05 * side, -0.8, 0.05))
+
+
+func _place_wrap(w: MeshInstance3D, hand: Vector3, elbow: Vector3) -> void:
+	var d := (elbow - hand).normalized()
+	if d.length() < 0.5:
+		return
+	w.transform = Transform3D(Basis.looking_at(d, Vector3.UP), hand + d * 0.08)
 
 
 func _place_forearm(arm: MeshInstance3D, hand: Vector3, elbow: Vector3) -> void:

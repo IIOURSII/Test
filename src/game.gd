@@ -49,6 +49,9 @@ var _pending_events: Array = []
 
 # --- Match (modes Duel et Local) ---
 const ROUNDS_TO_WIN := 2
+## Couleurs des combattants : manteau / écharpe (et yeux).
+const PLAYER_COLORS := [Color(0.2, 0.25, 0.5), Color(0.55, 0.1, 0.1)]
+const PLAYER_ACCENTS := [Color(0.98, 0.78, 0.3), Color(0.95, 0.95, 0.9)]
 var mode: String = "sandbox"       ## "sandbox" (debug), "duel_ai", "local"
 var difficulty: String = "normal"
 var match_state: String = "fight"  ## "intro", "fight", "ko", "between", "over"
@@ -95,18 +98,17 @@ func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 		pad.setup(pads[0] if pads.size() > 0 else 0, map.spawn_yaw(1))
 
 	# Vues FPS (une par humain) et sprites des deux combattants.
-	var colors := [Color(0.22, 0.26, 0.45), Color(0.6, 0.13, 0.1)]
 	for i in 2:
 		var fv := FighterView.new()
 		add_child(fv)
-		fv.setup(cfg, colors[i], 1 << (1 + i))
+		fv.setup(cfg, PLAYER_COLORS[i], 1 << (1 + i), PLAYER_ACCENTS[i])
 		fighter_views.append(fv)
 	if mode == "local":
 		_setup_split()
 	else:
 		var v := FirstPersonView.new()
 		add_child(v)
-		v.setup(cfg)
+		v.setup(cfg, PLAYER_COLORS[0], PLAYER_ACCENTS[0])
 		fp_views.append(v)
 	for k in fp_views.size():
 		fp_views[k].camera.cull_mask = 0xFFFFF & ~(1 << (1 + k))   # on ne voit pas son propre sprite
@@ -180,7 +182,7 @@ func _setup_split() -> void:
 		cont.add_child(vp)
 		var v := FirstPersonView.new()
 		vp.add_child(v)
-		v.setup(cfg)
+		v.setup(cfg, PLAYER_COLORS[k], PLAYER_ACCENTS[k])
 		fp_views.append(v)
 
 
@@ -421,6 +423,20 @@ func _play_event(e: Dictionary) -> void:
 				sfx.play("swish_heavy" if e["heavy"] else "swish", -4.0)
 			else:
 				sfx.play("swish_soft", -8.0)
+		# --- Lecture et annulations ---
+		"tell":
+			# Reflet sur la lame adverse juste avant le coup : à toi de le lire.
+			if fi != 0 or mode == "local":
+				fx.star(e["pos"], Color(1.0, 1.0, 0.95) if e["button"] == "blade" else Color(1.0, 0.85, 0.5), 0.45, 0.14)
+				sfx.play("chin", -16.0, 0.05)
+		"cancel_dash", "cancel_attack":
+			if fi >= 0 and fi < fighter_views.size():
+				fighter_views[fi].ghost(Color(0.7, 0.95, 1.0, 0.7), 0.35)
+			sfx.play("shing", -11.0, 0.08)
+			sfx.play("dash", -8.0)
+			if _fp(fi):
+				post.speed_lines(0.3, 0.06, Color(0.8, 0.95, 1.0))
+				post.punch(0.25, 0.15)
 		"dash":
 			sfx.play("dash", -9.0)
 			if fi == 0:

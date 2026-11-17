@@ -3,35 +3,127 @@
   "preset": "estampe",
   "presets": {
     "estampe": {
-      "label": "Estampe", "desc": "Palette chaude fixe, tramage léger, gros pixels nets.",
-      "retro": true, "pixel_size": 3, "use_palette": true, "dither": 0.6,
-      "vignette": 0.55, "grain": 0.02, "saturation": 1.05, "contrast": 1.08, "brightness": 1.08,
-      "tint": [1.0, 0.97, 0.92], "shadow_tint": [0.03, 0.02, 0.04]
+      "label": "Estampe",
+      "desc": "Palette chaude fixe, tramage léger, gros pixels nets.",
+      "retro": true,
+      "pixel_size": 4,
+      "use_palette": true,
+      "dither": 0.6,
+      "vignette": 0.55,
+      "grain": 0.02,
+      "saturation": 1.05,
+      "contrast": 1.08,
+      "brightness": 1.08,
+      "tint": [
+        1.0,
+        0.97,
+        0.92
+      ],
+      "shadow_tint": [
+        0.03,
+        0.02,
+        0.04
+      ]
     },
     "lavis": {
-      "label": "Lavis", "desc": "Pixels fins et couleurs douces, presque sans tramage.",
-      "retro": true, "pixel_size": 2, "use_palette": false, "color_levels": 20, "dither": 0.15,
-      "vignette": 0.45, "grain": 0.015, "saturation": 0.9, "contrast": 1.05, "brightness": 1.04,
-      "tint": [1.0, 0.96, 0.9], "shadow_tint": [0.03, 0.025, 0.04]
+      "label": "Lavis",
+      "desc": "Pixels fins et couleurs douces, presque sans tramage.",
+      "retro": true,
+      "pixel_size": 3,
+      "use_palette": false,
+      "color_levels": 20,
+      "dither": 0.15,
+      "vignette": 0.45,
+      "grain": 0.015,
+      "saturation": 0.9,
+      "contrast": 1.05,
+      "brightness": 1.04,
+      "tint": [
+        1.0,
+        0.96,
+        0.9
+      ],
+      "shadow_tint": [
+        0.03,
+        0.025,
+        0.04
+      ]
     },
     "retro": {
-      "label": "Rétro brut", "desc": "L'ancien filtre : très pixelisé, peu de couleurs, gros grain.",
-      "retro": true, "pixel_size": 4, "use_palette": false, "color_levels": 7, "dither": 1.0,
-      "vignette": 0.65, "grain": 0.05, "saturation": 0.72, "contrast": 1.15, "brightness": 1.05,
-      "tint": [1.0, 0.9, 0.78], "shadow_tint": [0.05, 0.035, 0.07]
+      "label": "Rétro brut",
+      "desc": "L'ancien filtre : très pixelisé, peu de couleurs, gros grain.",
+      "retro": true,
+      "pixel_size": 4,
+      "use_palette": false,
+      "color_levels": 7,
+      "dither": 1.0,
+      "vignette": 0.65,
+      "grain": 0.05,
+      "saturation": 0.72,
+      "contrast": 1.15,
+      "brightness": 1.05,
+      "tint": [
+        1.0,
+        0.9,
+        0.78
+      ],
+      "shadow_tint": [
+        0.05,
+        0.035,
+        0.07
+      ]
     },
     "aucun": {
-      "label": "Aucun", "desc": "Image d'origine (les effets d'impact restent).",
-      "retro": false, "vignette": 0.3, "grain": 0.0, "saturation": 1.0, "contrast": 1.0, "brightness": 1.0,
-      "tint": [1.0, 1.0, 1.0], "shadow_tint": [0.0, 0.0, 0.0]
+      "label": "Aucun",
+      "desc": "Image d'origine (les effets d'impact restent).",
+      "retro": false,
+      "vignette": 0.3,
+      "grain": 0.0,
+      "saturation": 1.0,
+      "contrast": 1.0,
+      "brightness": 1.0,
+      "tint": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "shadow_tint": [
+        0.0,
+        0.0,
+        0.0
+      ]
     }
   },
   "palette": [
-    "#0d0b10", "#1c1720", "#2e2430", "#4a3540", "#6b4a4a", "#8f6a5a", "#b8937a", "#e0c6a6", "#f4ead8",
-    "#3a0d12", "#6e1418", "#a4231f", "#d64532", "#f08a5d",
-    "#5a3a14", "#8f6420", "#c79a3a", "#f0cf6a", "#ff7a1a", "#ffd27a",
-    "#1f2b1e", "#3a4f2e", "#6a7f45",
-    "#141c2b", "#24364f", "#3f5f7f", "#7fa3b8",
-    "#5a5a66", "#8a8c94", "#c9c3cf"
+    "#0d0b10",
+    "#1c1720",
+    "#2e2430",
+    "#4a3540",
+    "#6b4a4a",
+    "#8f6a5a",
+    "#b8937a",
+    "#e0c6a6",
+    "#f4ead8",
+    "#3a0d12",
+    "#6e1418",
+    "#a4231f",
+    "#d64532",
+    "#f08a5d",
+    "#5a3a14",
+    "#8f6420",
+    "#c79a3a",
+    "#f0cf6a",
+    "#ff7a1a",
+    "#ffd27a",
+    "#1f2b1e",
+    "#3a4f2e",
+    "#6a7f45",
+    "#141c2b",
+    "#24364f",
+    "#3f5f7f",
+    "#7fa3b8",
+    "#5a5a66",
+    "#8a8c94",
+    "#c9c3cf"
   ]
 }

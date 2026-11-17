@@ -60,6 +60,9 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 
 	var wish := wish_dir(f, held)
 
+	# Annulations au Ki : dash pendant un dash ou pendant une attaque.
+	_try_cancel_dash(f, cfg, held, pressed, wish)
+
 	# Mécanique du katana : annuler la recovery avec le Zanshin (touche A).
 	if f.cancel_buffer > 0 and f.action == FighterState.Action.ATTACK:
 		if KatanaMechanic.try_cancel(f, moves):
@@ -113,6 +116,11 @@ static func _tick_timers(f: FighterState, cfg: Dictionary) -> void:
 	if f.cancel_buffer > 0:
 		f.cancel_buffer -= 1
 	f.ticks_since_hit += 1
+	var cc: Dictionary = cfg.get("cancel", {})
+	if f.ki_delay > 0:
+		f.ki_delay -= 1
+	else:
+		f.ki = mini(f.ki + int(cc.get("regen", 7)), int(cc.get("ki_max", 1000)))
 	f.burst_gauge = mini(f.burst_gauge + int(bd["gauge_regen"]), int(bd["gauge_max"]))
 	if f.action == FighterState.Action.BLOCK or f.action == FighterState.Action.BLOCKSTUN:
 		f.guard_idle = 0
@@ -153,6 +161,46 @@ static func _step_stun_simple(f: FighterState, mv: Dictionary, after: int) -> vo
 	if f.hitstun <= 0:
 		f.action = after
 		f.action_tick = 0
+
+
+# ---------------------------------------------------------------- Annulations (Ki)
+
+static func spend_ki(f: FighterState, cfg: Dictionary, cost: int) -> bool:
+	if f.ki < cost:
+		return false
+	f.ki -= cost
+	if cost > 0:
+		f.ki_delay = int(cfg.get("cancel", {}).get("regen_delay", 35))
+	return true
+
+
+## Shift + direction pendant un dash ou une attaque : on annule et on redashe.
+static func _try_cancel_dash(f: FighterState, cfg: Dictionary, held: int, pressed: int, wish: Vector3) -> void:
+	if f.action != FighterState.Action.DASH and f.action != FighterState.Action.ATTACK:
+		return
+	if not (held & InputFrame.DASH) or wish == Vector3.ZERO:
+		return
+	if (pressed & InputFrame.DASH) == 0 and (pressed & InputFrame.DIR_MASK) == 0:
+		return
+	var cc: Dictionary = cfg.get("cancel", {})
+	var min_t := int(cc.get("min_tick", 3))
+	var cost := 0
+	if f.action == FighterState.Action.DASH:
+		if f.action_tick < min_t:
+			return
+		cost = int(cc.get("dash_from_dash", 250))
+	else:
+		if f.move_tick < min_t or f.move_id == "burst":
+			return
+		cost = int(cc.get("dash_from_attack", 300))
+	if not f.on_ground and f.air_dash_used:
+		return
+	if not spend_ki(f, cfg, cost):
+		return
+	if f.action == FighterState.Action.ATTACK:
+		end_move(f)
+	_start_dash(f, cfg["movement"], wish)
+	f.pending_fx = "cancel_dash"
 
 
 ## Potion (R) et provocation (T) : seulement quand on est libre.
@@ -246,10 +294,26 @@ static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, 
 			# Coups annulables dans n'importe quoi (ex : la feinte).
 			elif MoveSet.in_range(cur["free_cancel"], f.move_tick):
 				allowed = true
+	var cancelled := false
+	var cc: Dictionary = cfg.get("cancel", {})
+	# Annulation au Ki : attaque pendant une attaque (moins cher si le coup a touché), ou pendant un dash.
+	# (Pas d'annulation dans le MÊME coup tant qu'il n'a pas touché : évite de gaspiller le Ki en double-cliquant.)
+	if not allowed and f.action == FighterState.Action.ATTACK and f.move_id != "burst" \
+			and f.move_tick >= int(cc.get("min_tick", 3)) and (next_id != f.move_id or f.hit_groups != 0):
+		var cost := int(cc.get("attack_on_hit", 200)) if f.hit_groups != 0 else int(cc.get("attack_from_attack", 350))
+		if spend_ki(f, cfg, cost):
+			allowed = true
+			cancelled = true
+	elif not allowed and f.action == FighterState.Action.DASH and f.action_tick >= int(cc.get("min_tick", 3)):
+		if spend_ki(f, cfg, int(cc.get("attack_from_dash", 120))):
+			allowed = true
+			cancelled = true
 	if not allowed:
 		return
 	_clear_pending(f)
 	start_move(f, next_id, moves, cfg, wish)
+	if cancelled:
+		f.pending_fx = "cancel_attack"
 
 
 static func start_move(f: FighterState, id: String, moves: MoveSet, cfg: Dictionary, wish: Vector3) -> void:
@@ -431,9 +495,13 @@ static func _try_dash(f: FighterState, mv: Dictionary, held: int, pressed: int, 
 	var trigger := (pressed & InputFrame.DASH) != 0 or (pressed & InputFrame.DIR_MASK) != 0
 	if not trigger:
 		return
+	if not f.on_ground and (not mv.get("allow_air_dash", true) or f.air_dash_used):
+		return
+	_start_dash(f, mv, wish)
+
+
+static func _start_dash(f: FighterState, mv: Dictionary, wish: Vector3) -> void:
 	if not f.on_ground:
-		if not mv.get("allow_air_dash", true) or f.air_dash_used:
-			return
 		f.air_dash_used = true
 	f.action = FighterState.Action.DASH
 	f.action_tick = 0

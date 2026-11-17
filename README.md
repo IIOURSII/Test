@@ -42,6 +42,12 @@ Stick gauche : déplacement et manips · Stick droit : visée · **RT** lame · 
 | Recharger les fichiers de données | F6 |
 | Libérer la souris | Échap (clic pour reprendre) |
 
+## Rythme : lent puis très rapide
+
+- Les attaques sont **lentes et lisibles** : un **reflet** brille sur la lame adverse juste avant le coup.
+- **Tout s'annule** avec le **Ki 気** (jauge blanche) : dash pendant un dash, dash pendant une attaque (feinte/fuite), attaque pendant une attaque ou un dash. Coûts réglables dans `combat.json > cancel` (0 = gratuit).
+- Images rémanentes pendant les dashs et les annulations.
+
 ## Le Katana — « La Voie du sabre »
 
 - **Posture Iai** (421 LAME maintenu) : reste rengainé pour charger, relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture.
