@@ -257,7 +257,7 @@ static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, 
 				return
 	var trail := f.pending_input == "dash_trail"
 	_clear_pending(f)
-	f.dir_history.clear()   # la mémoire se vide à chaque coup confirmé
+	# La mémoire n'est JAMAIS effacée : re-cliquer relance le même coup tant qu'on ne tape pas d'autre direction.
 	if next_id == DASH_ID:
 		if not f.on_ground and (not cfg["movement"].get("allow_air_dash", true) or f.air_dash_used):
 			return

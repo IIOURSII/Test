@@ -3,7 +3,8 @@ extends RefCounted
 ## MÉMOIRE DE DIRECTIONS.
 ## Le jeu retient les directions tapées (seulement ← → ↓ ↙ ↘ ; avancer, sauter et s'accroupir ne comptent pas).
 ## Au clic, les 3 dernières directions DIFFÉRENTES forment la "manip" du coup (ex : ↓↘→ = 236).
-## Pas de limite de temps : la mémoire se vide seulement quand un coup est confirmé.
+## La mémoire n'est JAMAIS effacée (ni par le temps, ni quand un coup est lancé) : seules de nouvelles
+## directions la font évoluer. Re-cliquer relance donc le même coup.
 ##
 ## Notation numpad (garde droite) :  1 = ↙   2 = ↓   3 = ↘   4 = ←   6 = →
 ## En garde gauche, tout est inversé en miroir (4 <-> 6, 1 <-> 3).

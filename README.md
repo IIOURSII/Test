@@ -20,7 +20,7 @@ FPS de mêlée « Japon médiéval fantasy ». Phase 1 en cours.
 Stick gauche : déplacement et manips · Stick droit : visée · **RT** lame · **RB** pommeau · **LT** garde/parry · **A** saut · **B** accroupi · **X** changer de garde · **Y** potion · **R3** burst · **Croix haut** provocation · **Start** pause.
 
 ### Coups : mémoire de 3 directions
-Le jeu retient tes **3 dernières directions différentes** (← → ↓ ↙ ↘ ; avancer/sauter/s'accroupir ne comptent pas), sans limite de temps. Un **clic** (lame ou pommeau) confirme le coup correspondant, **à n'importe quel moment** (il annule l'action en cours), puis la mémoire se vide. Clic avec moins de 3 directions = coup de base. L'indicateur en bas de l'écran montre ta mémoire et le coup que lancerait un clic.
+Le jeu retient tes **3 dernières directions différentes** (← → ↓ ↙ ↘ ; avancer/sauter/s'accroupir ne comptent pas), sans limite de temps. Un **clic** (lame ou pommeau) confirme le coup correspondant, **à n'importe quel moment** (il annule l'action en cours). La mémoire n'est **jamais effacée** : re-cliquer relance le même coup tant que tu ne tapes pas d'autre direction. Clic avec moins de 3 directions (seulement en tout début de combat) = coup de base. L'indicateur en bas de l'écran montre ta mémoire et le coup que lancerait un clic.
 **Dash universel : ↓↘→ + clic** (droit devant ; ajoute une direction juste après la manip pour choisir le sens, ex. ↓↘→ puis ↓ = dash arrière).
 
 ## Touches (AZERTY par défaut, modifiables dans `data/config/controls.json`)

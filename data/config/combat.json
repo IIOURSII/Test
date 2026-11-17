@@ -116,7 +116,7 @@
     "_aide": "Taille utilisée par le terrain d'entraînement. Les autres maps ont leurs propres dimensions (data/maps/)."
   },
   "input": {
-    "_aide": "MÉMOIRE DE DIRECTIONS : le jeu retient les 3 dernières directions DIFFÉRENTES tapées (← → ↓ ↙ ↘ ; avancer/sauter/s'accroupir ne comptent pas), sans limite de temps. Un clic confirme le coup correspondant, à N'IMPORTE QUEL moment (annule l'action en cours), puis la mémoire se vide. dash_triple = manip du dash universel. dash_grace_ticks = une direction tapée juste après la manip du dash (moins de ce nombre de ticks) donne la direction du dash au lieu d'être mémorisée. button_buffer_ticks = un clic fait pendant un hitstop/coup reçu est gardé en mémoire ce nombre de ticks.",
+    "_aide": "MÉMOIRE DE DIRECTIONS : le jeu retient les 3 dernières directions DIFFÉRENTES tapées (← → ↓ ↙ ↘ ; avancer/sauter/s'accroupir ne comptent pas), sans limite de temps. Un clic confirme le coup correspondant, à N'IMPORTE QUEL moment (annule l'action en cours). La mémoire n'est JAMAIS effacée : re-cliquer relance le même coup. dash_triple = manip du dash universel. dash_grace_ticks = une direction tapée juste après la manip du dash (moins de ce nombre de ticks) donne la direction du dash au lieu d'être mémorisée. button_buffer_ticks = un clic fait pendant un hitstop/coup reçu est gardé en mémoire ce nombre de ticks.",
     "dash_triple": "236",
     "dash_grace_ticks": 10,
     "button_buffer_ticks": 6

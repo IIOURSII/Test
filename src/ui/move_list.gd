@@ -55,7 +55,8 @@ func refresh(moves: MoveSet, guard: int, controls: Dictionary, force: bool = fal
 	s += "[color=#e8dcc8][b]COMMENT ÇA MARCHE[/b] — le jeu retient tes [b]3 dernières directions différentes[/b] "
 	s += "(← = %s, → = %s, ↓ = %s, ↙ = %s+%s, ↘ = %s+%s ; avancer, sauter et s'accroupir ne comptent pas), " % [k_left, k_right, k_back, k_back, k_left, k_back, k_right]
 	s += "sans limite de temps. Un [b]clic[/b] confirme le coup — [b]à n'importe quel moment[/b], même en plein milieu d'un autre coup ou d'un dash (il l'annule). "
-	s += "Puis la mémoire se vide. Clic avec moins de 3 directions en mémoire = coup de base. Regarde l'indicateur en bas de l'écran.[/color]\n\n"
+	s += "La mémoire n'est [b]jamais effacée[/b] : re-cliquer relance le même coup tant que tu ne tapes pas d'autre direction. "
+	s += "Le coup de base (aucune direction) n'existe qu'au tout début du combat, avant tes 3 premières directions. Regarde l'indicateur en bas de l'écran.[/color]\n\n"
 	s += "[color=#e05a4a][b]LAME[/b] = clic gauche[/color]     [color=#e0c04a][b]POMMEAU[/b] = clic droit[/color]\n\n"
 	if moves.mechanic_desc != "":
 		s += "[color=#ff8a8a]%s[/color]\n\n" % moves.mechanic_desc
