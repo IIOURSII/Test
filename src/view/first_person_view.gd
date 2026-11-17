@@ -19,6 +19,9 @@ var _bob_phase: float = 0.0
 var _bob_amount: float = 0.0
 var _shake: float = 0.0
 var _shake_time: float = 0.0
+var _fov_punch: float = 0.0
+var _kick: Vector2 = Vector2.ZERO   ## petit à-coup de caméra à l'impact
+var trail: SlashTrail
 
 
 func setup(cfg: Dictionary) -> void:
@@ -34,6 +37,9 @@ func setup(cfg: Dictionary) -> void:
 
 	katana = MeshUtil.katana()
 	arms.add_child(katana)
+	trail = SlashTrail.new()
+	arms.add_child(trail)
+	trail.setup()
 
 	var skin := Color(0.85, 0.66, 0.5)
 	var sleeve := Color(0.15, 0.17, 0.25)
@@ -47,9 +53,11 @@ func setup(cfg: Dictionary) -> void:
 	arms.add_child(forearm_off)
 
 
-## Petite secousse de caméra (proportionnelle au coup). Version simple, améliorée à l'étape 5.
-func add_shake(amount: float) -> void:
-	_shake = maxf(_shake, amount)
+## Secousse + à-coup + zoom à l'impact (proportionnels à la puissance du coup).
+func on_impact(power: float, as_attacker: bool) -> void:
+	_shake = maxf(_shake, power * (0.7 if as_attacker else 1.3))
+	_fov_punch = -7.0 * power if as_attacker else 5.0 * power
+	_kick = Vector2(randf_range(-1.0, 1.0), -1.0 if as_attacker else 1.0) * 0.025 * power
 
 
 func update_view(prev: FighterState, cur: FighterState, alpha: float,
@@ -63,13 +71,32 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 	rotation = Vector3(0, look_yaw, 0)
 
 	_shake_time += delta
-	_shake = move_toward(_shake, 0.0, delta * 3.0)
-	var sh := Vector2(sin(_shake_time * 71.0), cos(_shake_time * 53.0)) * _shake * 0.05
-	camera.rotation = Vector3(look_pitch + sh.y, sh.x, 0)
+	_shake = move_toward(_shake, 0.0, delta * 2.5)
+	_kick = _kick.lerp(Vector2.ZERO, 1.0 - exp(-delta * 12.0))
+	_fov_punch = lerpf(_fov_punch, 0.0, 1.0 - exp(-delta * 9.0))
+	var sh := Vector2(sin(_shake_time * 71.0), cos(_shake_time * 53.0)) * _shake * 0.06
+
+	# Le "corps" suit le geste : la caméra penche/plonge avec le coup.
+	var cam_off := Vector4.ZERO  # roll, pitch, yaw (degrés), push (m)
+	var attacking := cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id)
+	if attacking:
+		var m := moves.get_move(cur.move_id)
+		var tc := float(cur.move_tick) + (0.0 if cur.hitstop > 0 else alpha)
+		var c := WeaponAnim.cam_curve(m, tc)
+		var cp: Dictionary = WeaponAnim.CAM.get(m["anim"], {})
+		var g := float(cur.guard)
+		cam_off = Vector4(float(cp.get("roll", 0.0)) * g, float(cp.get("pitch", 0.0)),
+				float(cp.get("yaw", 0.0)) * g, float(cp.get("push", 0.0))) * c
+	camera.rotation = Vector3(
+		look_pitch + sh.y + _kick.y + deg_to_rad(cam_off.y),
+		sh.x + _kick.x + deg_to_rad(cam_off.z),
+		deg_to_rad(cam_off.x))
+	camera.position = Vector3(0, 0, -cam_off.w)
 
 	var dashing := cur.action == FighterState.Action.DASH
-	var target_fov := BASE_FOV + (DASH_FOV_BONUS if dashing else 0.0)
+	var target_fov := BASE_FOV + (DASH_FOV_BONUS if dashing else 0.0) + _fov_punch
 	camera.fov = lerpf(camera.fov, target_fov, 1.0 - exp(-delta * 18.0))
+	camera.fov = clampf(camera.fov, 60.0, 110.0)
 
 	var hspeed := Vector2(cur.vel.x, cur.vel.z).length()
 	var moving := cur.on_ground and hspeed > 0.5 and cur.action != FighterState.Action.ATTACK
@@ -85,6 +112,16 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 	else:
 		pose = _guard_pose(cur, alpha)
 	_apply_pose(pose, bob)
+
+	# Traînée de lame pendant les frames actives (+ un peu après).
+	if attacking:
+		var m2 := moves.get_move(cur.move_id)
+		var s0 := int(m2["startup"])
+		var e0 := s0 + int(m2["active"]) + 3
+		if m2["button"] == "blade" and not (m2["hitboxes"] as Array).is_empty() \
+				and cur.move_tick >= s0 and cur.move_tick <= e0 and cur.hitstop == 0:
+			trail.add_point(katana.transform * Vector3(0, 0.2, 0), katana.transform * Vector3(0, 0.92, 0))
+	trail.tick(delta, cur.hitstop > 0)
 
 
 ## Pose de garde, animée pendant le changement de garde.

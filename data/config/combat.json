@@ -9,18 +9,26 @@
     "crouch_eye_height": 1.0
   },
   "movement": {
-    "walk_speed": 5.0,
-    "crouch_speed": 2.2,
-    "ground_accel": 60.0,
-    "air_accel": 14.0,
-    "jump_velocity": 7.5,
-    "gravity": 24.0,
-    "dash_speed": 16.0,
-    "dash_ticks": 10,
+    "walk_speed": 3.8,
+    "crouch_speed": 1.8,
+    "ground_accel": 30.0,
+    "air_accel": 9.0,
+    "jump_velocity": 7.0,
+    "gravity": 22.0,
+    "dash_speed": 14.0,
+    "dash_ticks": 9,
     "dash_slowdown_ticks": 3,
-    "dash_end_speed_ratio": 0.35,
-    "dash_cooldown_ticks": 16,
+    "dash_end_speed_ratio": 0.3,
+    "dash_cooldown_ticks": 18,
     "allow_air_dash": true
+  },
+  "attack": {
+    "_aide": "Inertie pendant les attaques. momentum_carry = part de ta vitesse gardée au début d'un coup (0 = arrêt net, 1 = tout gardé). damping = vitesse à laquelle cet élan s'amortit. friction = freinage restant. steer_ratio = part du déplacement ZQSD encore possible pendant le startup/recovery (0 = aucun). segment_accel = vitesse à laquelle les pas/dashs des coups atteignent leur vitesse (plus haut = plus sec).",
+    "momentum_carry": 0.75,
+    "damping": 7.0,
+    "friction": 6.0,
+    "steer_ratio": 0.3,
+    "segment_accel": 200.0
   },
   "guard_switch_ticks": 10,
   "arena": {

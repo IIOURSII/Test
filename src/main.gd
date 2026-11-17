@@ -25,6 +25,8 @@ var dummy_view: FighterView
 var debug_draw: DebugDraw
 var hud: Hud
 var move_list: MoveList
+var fx: Fx
+var sfx: Sfx
 var show_debug: bool = true
 var _pending_events: Array = []
 
@@ -68,6 +70,13 @@ func _ready() -> void:
 	add_child(move_list)
 	move_list.setup()
 
+	fx = Fx.new()
+	add_child(fx)
+	fx.setup()
+	sfx = Sfx.new()
+	add_child(sfx)
+	sfx.setup()
+
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -86,12 +95,7 @@ func _physics_process(_delta: float) -> void:
 func _process(delta: float) -> void:
 	var a := Engine.get_physics_interpolation_fraction()
 	for e in _pending_events:
-		if e["type"] == "hit":
-			var power := clampf(float(e["hitstop"]) / 12.0, 0.2, 1.0)
-			if e["defender"] == 1:
-				dummy_view.flash()
-			if e["attacker"] == 0 or e["defender"] == 0:
-				fp_view.add_shake(power)
+		_play_event(e)
 	_pending_events.clear()
 
 	fp_view.update_view(prev_states[0], world.fighters[0], a, collector.look_yaw, collector.look_pitch, delta, world.movesets[0])
@@ -99,6 +103,34 @@ func _process(delta: float) -> void:
 	debug_draw.redraw(world, show_debug)
 	hud.update_hud(world, show_debug, collector.is_captured())
 	move_list.refresh(world.movesets[0], world.fighters[0].guard, controls)
+
+
+## Sons et effets visuels déclenchés par la simulation.
+func _play_event(e: Dictionary) -> void:
+	match e["type"]:
+		"hit":
+			var power := clampf(float(e["hitstop"]) / 15.0, 0.25, 1.0)
+			var blade: bool = e["button"] == "blade"
+			fx.impact(e["pos"], e["dir"], power, "blade" if blade else "pommel")
+			if blade:
+				sfx.play("hit_heavy" if e["heavy"] else "hit", 0.0 if e["heavy"] else -2.0)
+			else:
+				sfx.play("thock", -1.0)
+			if e["defender"] == 1:
+				dummy_view.flash(power)
+			if e["attacker"] == 0:
+				fp_view.on_impact(power, true)
+			elif e["defender"] == 0:
+				fp_view.on_impact(power, false)
+		"swing":
+			if e["button"] == "blade":
+				sfx.play("swish_heavy" if e["heavy"] else "swish", -4.0)
+			else:
+				sfx.play("swish_soft", -8.0)
+		"dash":
+			sfx.play("dash", -9.0)
+		"guard":
+			sfx.play("shing", -12.0, 0.03)
 
 
 func _unhandled_input(event: InputEvent) -> void:

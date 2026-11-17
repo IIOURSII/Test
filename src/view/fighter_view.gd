@@ -10,6 +10,7 @@ var _body_mat: StandardMaterial3D
 var _head_mat: StandardMaterial3D
 var _cfg: Dictionary
 var _flash: float = 0.0
+var _recoil: float = 0.0
 
 
 func setup(cfg: Dictionary, color: Color) -> void:
@@ -33,8 +34,9 @@ func setup(cfg: Dictionary, color: Color) -> void:
 
 
 ## Flash blanc quand il est touché.
-func flash() -> void:
+func flash(power: float = 1.0) -> void:
 	_flash = 1.0
+	_recoil = maxf(_recoil, 0.6 + 0.6 * power)
 
 
 func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: float, moves: MoveSet) -> void:
@@ -44,10 +46,11 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: flo
 	var yaw := lerp_angle(prev.yaw_rad(), cur.yaw_rad(), alpha)
 
 	# Recule le buste quand il est sonné, tremble pendant le hitstop.
-	var tilt := 0.28 if cur.action == FighterState.Action.HITSTUN else 0.0
+	_recoil = move_toward(_recoil, 0.0, delta * 3.0)
+	var tilt := (0.12 if cur.action == FighterState.Action.HITSTUN else 0.0) + 0.3 * _recoil
 	var tremble := Vector3.ZERO
 	if frozen and cur.action == FighterState.Action.HITSTUN:
-		tremble = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.03
+		tremble = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.05
 	position += tremble
 	rotation = Vector3(tilt, yaw, 0)
 

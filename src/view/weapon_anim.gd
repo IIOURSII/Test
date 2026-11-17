@@ -59,6 +59,28 @@ const ANIMS := {
 }
 
 
+## Mouvement de caméra par type de coup (en degrés / mètres) : le "corps" suit le geste.
+## roll = pencher la tête, pitch = haut/bas, yaw = gauche/droite, push = avancer la caméra.
+const CAM := {
+	"diag": {"roll": 7.0, "pitch": -3.0, "yaw": -3.0, "push": 0.06},
+	"diag_rev": {"roll": -6.0, "pitch": 2.0, "yaw": 3.0, "push": 0.06},
+	"thrust": {"roll": 0.0, "pitch": -1.5, "yaw": 0.0, "push": 0.22},
+	"horizontal": {"roll": 4.0, "pitch": 0.0, "yaw": -8.0, "push": 0.08},
+	"rising": {"roll": -3.0, "pitch": 6.0, "yaw": 0.0, "push": 0.05},
+	"down": {"roll": 0.0, "pitch": -9.0, "yaw": 0.0, "push": 0.12},
+	"down_up": {"roll": 2.0, "pitch": -6.0, "yaw": 0.0, "push": 0.08},
+	"pommel": {"roll": 2.0, "pitch": -2.0, "yaw": 0.0, "push": 0.16},
+	"brace": {"roll": -6.0, "pitch": -2.0, "yaw": 4.0, "push": 0.2},
+	"iai": {"roll": 6.0, "pitch": 0.0, "yaw": -10.0, "push": 0.14},
+	"flick": {"roll": -4.0, "pitch": -2.0, "yaw": 0.0, "push": 0.0},
+}
+
+const OVERSHOOT := 0.3        ## le geste continue 30 % plus loin après l'impact (follow-through)
+const WINDUP_ARRIVE := 0.75   ## la pose armée est atteinte à 75 % du startup, puis tenue (lisible !)
+
+enum Ease { OUT, LINEAR, IN, OUT_CUBIC, SMOOTH }
+
+
 ## t = tick du coup (avec la fraction d'interpolation). side = +1 garde droite, -1 gauche.
 static func pose_for_move(m: Dictionary, t: float, side: float) -> Array:
 	var keys: Array = ANIMS.get(m.get("anim", "none"), [])
@@ -69,26 +91,66 @@ static func pose_for_move(m: Dictionary, t: float, side: float) -> Array:
 	if keys.is_empty():
 		return mirror(rest, side)
 
-	# Liste de [tick, pose]
-	var timeline: Array = [[0.0, rest]]
+	# [tick, pose, easing du segment qui ARRIVE sur cette clé]
+	var timeline: Array = [[0.0, rest, Ease.LINEAR]]
+	timeline.append([startup * WINDUP_ARRIVE, POSES[keys[0]], Ease.OUT])   # on arme
+	timeline.append([startup, POSES[keys[0]], Ease.LINEAR])                 # on tient (anticipation)
 	var n := keys.size()
-	for k in n:
-		var kt := startup + (active * float(k) / float(maxi(n - 1, 1)) if n > 1 else 0.0)
-		timeline.append([kt, POSES[keys[k]]])
-	timeline.append([total, rest])
+	for k in range(1, n):
+		var kt := startup + active * float(k) / float(n - 1)
+		timeline.append([kt, POSES[keys[k]], Ease.IN])                      # geste qui accélère vers l'impact
+	var last: Array = POSES[keys[n - 1]]
+	var before: Array = POSES[keys[maxi(n - 2, 0)]]
+	var recovery := total - startup - active
+	var follow_t := startup + active + minf(5.0, recovery * 0.35)
+	timeline.append([follow_t, overshoot(before, last, OVERSHOOT), Ease.OUT_CUBIC])  # follow-through
+	timeline.append([total, rest, Ease.SMOOTH])                              # retour en garde
 
 	for k in range(timeline.size() - 1):
 		var t0: float = timeline[k][0]
 		var t1: float = timeline[k + 1][0]
 		if t <= t1 or k == timeline.size() - 2:
-			var u := 0.0 if t1 <= t0 else clampf((t - t0) / (t1 - t0), 0.0, 1.0)
-			# startup : on arme (ease-out), active : geste sec, recovery : retour doux
-			if k == 0:
-				u = 1.0 - pow(1.0 - u, 2.0)
-			elif k == timeline.size() - 2:
-				u = smoothstep(0.0, 1.0, u)
+			var u := 1.0 if t1 <= t0 else clampf((t - t0) / (t1 - t0), 0.0, 1.0)
+			u = ease_value(u, timeline[k + 1][2])
 			return mirror(lerp_pose(timeline[k][1], timeline[k + 1][1], u), side)
 	return mirror(rest, side)
+
+
+static func ease_value(u: float, kind: int) -> float:
+	match kind:
+		Ease.OUT:
+			return 1.0 - (1.0 - u) * (1.0 - u)
+		Ease.IN:
+			return u * u
+		Ease.OUT_CUBIC:
+			return 1.0 - pow(1.0 - u, 3.0)
+		Ease.SMOOTH:
+			return smoothstep(0.0, 1.0, u)
+	return u
+
+
+static func overshoot(before: Array, last: Array, amount: float) -> Array:
+	var g: Vector3 = last[0]
+	var gb: Vector3 = before[0]
+	var d: Vector3 = (last[1] as Vector3).normalized()
+	var db: Vector3 = (before[1] as Vector3).normalized()
+	var nd := d + (d - db) * amount
+	return [g + (g - gb) * amount, nd.normalized() if nd.length() > 0.01 else d]
+
+
+## Intensité du mouvement de caméra : léger recul pendant le startup (anticipation),
+## pic juste après l'impact, retour pendant la recovery.
+static func cam_curve(m: Dictionary, t: float) -> float:
+	var s := float(m["startup"])
+	var a := float(m["active"])
+	var total := float(m["total"])
+	if t <= s:
+		return -0.35 * smoothstep(0.0, 1.0, t / maxf(s, 1.0))
+	if t <= s + a + 2.0:
+		var u := clampf((t - s) / maxf(a + 2.0, 1.0), 0.0, 1.0)
+		return lerpf(-0.35, 1.0, 1.0 - pow(1.0 - u, 3.0))
+	var r := clampf((t - s - a - 2.0) / maxf(total - s - a - 2.0, 1.0), 0.0, 1.0)
+	return 1.0 - smoothstep(0.0, 1.0, r)
 
 
 static func lerp_pose(a: Array, b: Array, u: float) -> Array:

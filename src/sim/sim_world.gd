@@ -34,6 +34,7 @@ func step(inputs: Array) -> void:
 	events.clear()
 	for i in fighters.size():
 		FighterLogic.step(fighters[i], inputs[i], cfg, movesets[i])
+	_emit_action_events()
 	_resolve_hits()
 	_resolve_pushboxes()
 	_clamp_to_arena()
@@ -99,13 +100,41 @@ func _resolve_hits() -> void:
 					continue
 				if Combat.capsules_overlap(pair[0], Combat.hurtbox(def, cfg)):
 					att.hit_groups |= bit
-					hits.append([i, j, hb])
+					hits.append([i, j, hb, pair[0]])
 					break
 	for h in hits:
-		_apply_hit(h[0], h[1], h[2])
+		_apply_hit(h[0], h[1], h[2], h[3])
 
 
-func _apply_hit(i: int, j: int, hb: Dictionary) -> void:
+## Événements "début d'action" pour les sons/effets (swing, dash, changement de garde).
+func _emit_action_events() -> void:
+	for i in fighters.size():
+		var f := fighters[i]
+		if f.hitstop > 0:
+			continue
+		if f.action == FighterState.Action.DASH and f.action_tick == 0:
+			events.append({"type": "dash", "fighter": i})
+		elif f.action == FighterState.Action.GUARD_SWITCH and f.action_tick == 0:
+			events.append({"type": "guard", "fighter": i})
+		elif f.action == FighterState.Action.ATTACK:
+			var m := movesets[i].get_move(f.move_id)
+			if m.is_empty():
+				continue
+			var hbs: Array = m["hitboxes"]
+			if hbs.is_empty():
+				if f.move_tick == 1 and not (m["movement"] as Array).is_empty():
+					events.append({"type": "dash", "fighter": i})
+				continue
+			for hb in hbs:
+				var r: Vector2i = hb["ticks"]
+				if f.move_tick == r.x:
+					events.append({
+						"type": "swing", "fighter": i, "button": m["button"],
+						"heavy": int(hb["hitstop"]) >= 12,
+					})
+
+
+func _apply_hit(i: int, j: int, hb: Dictionary, capsule: Array) -> void:
 	var att := fighters[i]
 	var def := fighters[j]
 	var m := movesets[i].get_move(att.move_id)
@@ -140,9 +169,18 @@ func _apply_hit(i: int, j: int, hb: Dictionary) -> void:
 		att.last_advantage = stun - (int(m["total"]) - att.move_tick)
 		att.has_advantage_info = true
 
+	# Point d'impact : sur la surface du corps, du côté de la lame.
+	var hb_mid: Vector3 = ((capsule[0] as Vector3) + (capsule[1] as Vector3)) * 0.5
+	var r: float = cfg["fighter"]["radius"]
+	var core := Vector3(def.pos.x, clampf(hb_mid.y, def.pos.y + 0.3, def.pos.y + 1.8), def.pos.z)
+	var out := Vector3(hb_mid.x - core.x, 0.0, hb_mid.z - core.z)
+	var impact := core + (out.normalized() * r if out.length() > 0.01 else Vector3.ZERO)
 	events.append({
 		"type": "hit", "attacker": i, "defender": j,
-		"damage": dmg, "hitstop": stop, "pos": def.pos + Vector3(0, 1.3, 0),
+		"damage": dmg, "hitstop": stop, "pos": impact,
+		"button": m.get("button", "blade"),
+		"heavy": stop >= 12,
+		"dir": (Combat.attack_frame(att, def, cfg)[0] as Vector3),
 	})
 
 

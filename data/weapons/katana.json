@@ -1,221 +1,796 @@
 {
   "_aide": "Frame data du KATANA. Les inputs sont écrits en GARDE DROITE (le jeu les inverse en garde gauche). Durées en ticks (60 = 1 s). startup = ticks avant que la hitbox apparaisse ; active = ticks où elle peut toucher ; recovery = ticks de récupération après. Hitbox : [côté, hauteur, avant] en mètres depuis les pieds du perso (côté positif = côté de l'arme). movement : vitesses en m/s pendant certains ticks (forward = avant, side = côté de l'arme, up = impulsion vers le haut). F6 en jeu = recharger.",
-
   "weapon": "Katana",
-
   "moves": {
     "5_blade": {
-      "name": "Kesa-giri", "input": "5", "button": "blade",
+      "name": "Kesa-giri",
+      "input": "5",
+      "button": "blade",
       "desc": "Coupe diagonale rapide, enchaînable jusqu'à 3 fois (re-cliquer).",
       "anim": "diag",
-      "startup": 8, "active": 3, "recovery": 14,
-      "damage": 60, "hitstun": 18, "hitstop": 6, "knockback": 1.5,
-      "movement": [{"from": 1, "to": 9, "forward": 2.0}],
-      "hitboxes": [{"from": [0.6, 1.7, 0.6], "to": [-0.4, 0.9, 1.5], "radius": 0.13}],
-      "chain_next": "5_blade_2", "chain_window": [12, 24]
+      "startup": 7,
+      "active": 3,
+      "recovery": 12,
+      "damage": 60,
+      "hitstun": 18,
+      "hitstop": 8,
+      "knockback": 1.5,
+      "movement": [
+        {
+          "from": 1,
+          "to": 8,
+          "forward": 2.5
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.6,
+            1.7,
+            0.6
+          ],
+          "to": [
+            -0.4,
+            0.9,
+            1.5
+          ],
+          "radius": 0.13
+        }
+      ],
+      "chain_next": "5_blade_2",
+      "chain_window": [
+        11,
+        22
+      ]
     },
     "5_blade_2": {
-      "name": "Kesa-giri (2)", "input": "5", "button": "blade", "hidden": true,
+      "name": "Kesa-giri (2)",
+      "input": "5",
+      "button": "blade",
+      "hidden": true,
       "desc": "Deuxième coupe de la chaîne.",
       "anim": "diag_rev",
-      "startup": 8, "active": 3, "recovery": 14,
-      "damage": 60, "hitstun": 18, "hitstop": 6, "knockback": 1.5,
-      "movement": [{"from": 1, "to": 9, "forward": 2.0}],
-      "hitboxes": [{"from": [-0.4, 0.9, 1.5], "to": [0.6, 1.7, 0.8], "radius": 0.13}],
-      "chain_next": "5_blade_3", "chain_window": [12, 24]
+      "startup": 7,
+      "active": 3,
+      "recovery": 12,
+      "damage": 60,
+      "hitstun": 18,
+      "hitstop": 8,
+      "knockback": 1.5,
+      "movement": [
+        {
+          "from": 1,
+          "to": 8,
+          "forward": 2.5
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            -0.4,
+            0.9,
+            1.5
+          ],
+          "to": [
+            0.6,
+            1.7,
+            0.8
+          ],
+          "radius": 0.13
+        }
+      ],
+      "chain_next": "5_blade_3",
+      "chain_window": [
+        11,
+        22
+      ]
     },
     "5_blade_3": {
-      "name": "Kesa-giri (3)", "input": "5", "button": "blade", "hidden": true,
+      "name": "Kesa-giri (3)",
+      "input": "5",
+      "button": "blade",
+      "hidden": true,
       "desc": "Troisième coupe, plus lourde, repousse.",
       "anim": "diag",
-      "startup": 11, "active": 4, "recovery": 20,
-      "damage": 80, "hitstun": 22, "hitstop": 9, "knockback": 5.0,
-      "movement": [{"from": 1, "to": 11, "forward": 3.0}],
-      "hitboxes": [{"from": [0.7, 1.8, 0.6], "to": [-0.5, 0.8, 1.6], "radius": 0.15}]
+      "startup": 9,
+      "active": 4,
+      "recovery": 18,
+      "damage": 80,
+      "hitstun": 22,
+      "hitstop": 12,
+      "knockback": 6.0,
+      "movement": [
+        {
+          "from": 1,
+          "to": 10,
+          "forward": 3.5
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.7,
+            1.8,
+            0.6
+          ],
+          "to": [
+            -0.5,
+            0.8,
+            1.6
+          ],
+          "radius": 0.15
+        }
+      ]
     },
     "5_pommel": {
-      "name": "Tsuka-ate", "input": "5", "button": "pommel",
+      "name": "Tsuka-ate",
+      "input": "5",
+      "button": "pommel",
       "desc": "Coup de pommeau sec au visage, très rapide, petit stagger.",
       "anim": "pommel",
-      "startup": 6, "active": 2, "recovery": 10,
-      "damage": 0, "hitstun": 14, "hitstop": 5, "knockback": 1.5,
-      "movement": [{"from": 1, "to": 6, "forward": 2.5}],
-      "hitboxes": [{"from": [0.1, 1.55, 0.4], "to": [0.0, 1.55, 1.05], "radius": 0.15}]
+      "startup": 5,
+      "active": 2,
+      "recovery": 9,
+      "damage": 0,
+      "hitstun": 14,
+      "hitstop": 7,
+      "knockback": 2.0,
+      "movement": [
+        {
+          "from": 1,
+          "to": 6,
+          "forward": 2.5
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.1,
+            1.55,
+            0.4
+          ],
+          "to": [
+            0.0,
+            1.55,
+            1.05
+          ],
+          "radius": 0.15
+        }
+      ]
     },
-
     "6_blade": {
-      "name": "Tsuki", "input": "6", "button": "blade",
+      "name": "Tsuki",
+      "input": "6",
+      "button": "blade",
       "desc": "Estoc avec un pas en avant, bonne allonge.",
       "anim": "thrust",
-      "startup": 12, "active": 4, "recovery": 18,
-      "damage": 90, "hitstun": 20, "hitstop": 8, "knockback": 3.0,
-      "movement": [{"from": 5, "to": 14, "forward": 7.0}],
-      "hitboxes": [{"from": [0.15, 1.35, 0.4], "to": [0.05, 1.35, 2.1], "radius": 0.11}]
+      "startup": 10,
+      "active": 4,
+      "recovery": 16,
+      "damage": 90,
+      "hitstun": 20,
+      "hitstop": 11,
+      "knockback": 3.5,
+      "movement": [
+        {
+          "from": 4,
+          "to": 12,
+          "forward": 8.0
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.15,
+            1.35,
+            0.4
+          ],
+          "to": [
+            0.05,
+            1.35,
+            2.1
+          ],
+          "radius": 0.11
+        }
+      ]
     },
     "6_pommel": {
-      "name": "Tai-atari", "input": "6", "button": "pommel",
+      "name": "Tai-atari",
+      "input": "6",
+      "button": "pommel",
       "desc": "Coup d'épaule qui repousse l'adversaire.",
       "anim": "brace",
-      "startup": 9, "active": 3, "recovery": 12,
-      "damage": 0, "hitstun": 16, "hitstop": 6, "knockback": 10.0,
-      "movement": [{"from": 4, "to": 12, "forward": 6.5}],
-      "hitboxes": [{"from": [0.2, 1.3, 0.3], "to": [0.2, 1.3, 0.85], "radius": 0.32}]
+      "startup": 8,
+      "active": 3,
+      "recovery": 11,
+      "damage": 0,
+      "hitstun": 16,
+      "hitstop": 8,
+      "knockback": 11.0,
+      "movement": [
+        {
+          "from": 3,
+          "to": 11,
+          "forward": 7.0
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.2,
+            1.3,
+            0.3
+          ],
+          "to": [
+            0.2,
+            1.3,
+            0.85
+          ],
+          "radius": 0.32
+        }
+      ]
     },
-
     "4_blade": {
-      "name": "Yoko-giri", "input": "4", "button": "blade",
+      "name": "Yoko-giri",
+      "input": "4",
+      "button": "blade",
       "desc": "Coupe horizontale large côté garde, attrape les esquives latérales.",
       "anim": "horizontal",
-      "startup": 14, "active": 6, "recovery": 20,
-      "damage": 80, "hitstun": 20, "hitstop": 8, "knockback": 2.0,
-      "movement": [{"from": 1, "to": 12, "forward": 1.5}],
+      "startup": 12,
+      "active": 6,
+      "recovery": 18,
+      "damage": 80,
+      "hitstun": 20,
+      "hitstop": 11,
+      "knockback": 2.0,
+      "movement": [
+        {
+          "from": 1,
+          "to": 12,
+          "forward": 1.5
+        }
+      ],
       "hitboxes": [
-        {"ticks": [15, 17], "from": [1.5, 1.2, 0.2], "to": [0.4, 1.2, 1.6], "radius": 0.15, "group": 0},
-        {"ticks": [18, 20], "from": [0.4, 1.2, 1.6], "to": [-0.9, 1.2, 1.0], "radius": 0.15, "group": 0}
+        {
+          "ticks": [
+            13,
+            15
+          ],
+          "from": [
+            1.5,
+            1.2,
+            0.2
+          ],
+          "to": [
+            0.4,
+            1.2,
+            1.6
+          ],
+          "radius": 0.15,
+          "group": 0
+        },
+        {
+          "ticks": [
+            16,
+            18
+          ],
+          "from": [
+            0.4,
+            1.2,
+            1.6
+          ],
+          "to": [
+            -0.9,
+            1.2,
+            1.0
+          ],
+          "radius": 0.15,
+          "group": 0
+        }
       ]
     },
     "4_pommel": {
-      "name": "Yoko-ate", "input": "4", "button": "pommel",
+      "name": "Yoko-ate",
+      "input": "4",
+      "button": "pommel",
       "desc": "Pas latéral + pommeau, pour se repositionner.",
       "anim": "pommel",
-      "startup": 9, "active": 2, "recovery": 10,
-      "damage": 0, "hitstun": 14, "hitstop": 5, "knockback": 1.5,
-      "movement": [{"from": 1, "to": 7, "side": -9.0}],
-      "hitboxes": [{"from": [0.1, 1.5, 0.4], "to": [0.0, 1.5, 1.05], "radius": 0.16}]
+      "startup": 8,
+      "active": 2,
+      "recovery": 9,
+      "damage": 0,
+      "hitstun": 14,
+      "hitstop": 5,
+      "knockback": 1.5,
+      "movement": [
+        {
+          "from": 1,
+          "to": 7,
+          "side": -9.0
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.1,
+            1.5,
+            0.4
+          ],
+          "to": [
+            0.0,
+            1.5,
+            1.05
+          ],
+          "radius": 0.16
+        }
+      ]
     },
-
     "2_blade": {
-      "name": "Retraite", "input": "2", "button": "blade",
+      "name": "Retraite",
+      "input": "2",
+      "button": "blade",
       "desc": "Recul + coupe montante qui punit ceux qui poursuivent.",
       "anim": "rising",
-      "startup": 16, "active": 4, "recovery": 20,
-      "damage": 90, "hitstun": 22, "hitstop": 8, "knockback": 2.0,
-      "movement": [{"from": 1, "to": 10, "forward": -7.0}],
-      "hitboxes": [{"from": [0.2, 0.4, 1.2], "to": [0.0, 2.0, 1.4], "radius": 0.15}]
+      "startup": 13,
+      "active": 4,
+      "recovery": 18,
+      "damage": 90,
+      "hitstun": 22,
+      "hitstop": 11,
+      "knockback": 2.0,
+      "movement": [
+        {
+          "from": 1,
+          "to": 9,
+          "forward": -7.0
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.2,
+            0.4,
+            1.2
+          ],
+          "to": [
+            0.0,
+            2.0,
+            1.4
+          ],
+          "radius": 0.15
+        }
+      ]
     },
     "2_pommel": {
-      "name": "Hiki", "input": "2", "button": "pommel",
+      "name": "Hiki",
+      "input": "2",
+      "button": "pommel",
       "desc": "Backdash très rapide (invincible au début), meilleur outil de fuite.",
       "anim": "none",
-      "startup": 14, "active": 0, "recovery": 6,
-      "movement": [{"from": 1, "to": 11, "forward": -14.0}],
-      "invuln": [1, 9],
+      "startup": 12,
+      "active": 0,
+      "recovery": 6,
+      "movement": [
+        {
+          "from": 1,
+          "to": 10,
+          "forward": -15.0
+        }
+      ],
+      "invuln": [
+        1,
+        8
+      ],
       "hitboxes": []
     },
-
     "22_blade": {
-      "name": "Iai", "input": "22", "button": "blade",
+      "name": "Iai",
+      "input": "22",
+      "button": "blade",
       "desc": "Rengaine puis dégaine éclair. (Charge en maintenant le clic : étape 3.)",
       "anim": "iai",
-      "startup": 20, "active": 3, "recovery": 22,
-      "damage": 150, "hitstun": 26, "hitstop": 12, "knockback": 4.0,
-      "movement": [{"from": 19, "to": 23, "forward": 6.0}],
-      "hitboxes": [{"from": [0.9, 1.2, 0.3], "to": [-0.6, 1.2, 1.8], "radius": 0.13}]
+      "startup": 18,
+      "active": 3,
+      "recovery": 20,
+      "damage": 150,
+      "hitstun": 26,
+      "hitstop": 16,
+      "knockback": 4.0,
+      "movement": [
+        {
+          "from": 17,
+          "to": 21,
+          "forward": 7.0
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.9,
+            1.2,
+            0.3
+          ],
+          "to": [
+            -0.6,
+            1.2,
+            1.8
+          ],
+          "radius": 0.13
+        }
+      ]
     },
     "22_pommel": {
-      "name": "Kyo-iai (feinte)", "input": "22", "button": "pommel",
+      "name": "Kyo-iai (feinte)",
+      "input": "22",
+      "button": "pommel",
       "desc": "Fausse dégaine, annulable à tout moment dans n'importe quel coup.",
       "anim": "feint",
-      "startup": 14, "active": 0, "recovery": 4,
-      "free_cancel": [1, 18],
+      "startup": 12,
+      "active": 0,
+      "recovery": 4,
+      "free_cancel": [
+        1,
+        16
+      ],
       "hitboxes": []
     },
-
     "214_blade": {
-      "name": "Tsubame-gaeshi", "input": "214", "button": "blade",
+      "name": "Tsubame-gaeshi",
+      "input": "214",
+      "button": "blade",
       "desc": "Coupe descendante + remontée immédiate, 2 hits.",
       "anim": "down_up",
-      "startup": 13, "active": 8, "recovery": 22,
-      "damage": 70, "hitstun": 18, "hitstop": 6, "knockback": 1.0,
-      "movement": [{"from": 1, "to": 12, "forward": 1.5}],
+      "startup": 11,
+      "active": 8,
+      "recovery": 20,
+      "damage": 70,
+      "hitstun": 18,
+      "hitstop": 8,
+      "knockback": 1.0,
+      "movement": [
+        {
+          "from": 1,
+          "to": 12,
+          "forward": 1.5
+        }
+      ],
       "hitboxes": [
-        {"ticks": [14, 16], "from": [0.1, 2.0, 0.9], "to": [0.0, 0.5, 1.4], "radius": 0.13},
-        {"ticks": [18, 21], "from": [0.0, 0.5, 1.4], "to": [0.1, 2.1, 0.9], "radius": 0.13, "hitstop": 9, "knockback": 3.0}
+        {
+          "ticks": [
+            12,
+            14
+          ],
+          "from": [
+            0.1,
+            2.0,
+            0.9
+          ],
+          "to": [
+            0.0,
+            0.5,
+            1.4
+          ],
+          "radius": 0.13
+        },
+        {
+          "ticks": [
+            16,
+            19
+          ],
+          "from": [
+            0.0,
+            0.5,
+            1.4
+          ],
+          "to": [
+            0.1,
+            2.1,
+            0.9
+          ],
+          "radius": 0.13,
+          "hitstop": 12,
+          "knockback": 3.0
+        }
       ]
     },
     "214_pommel": {
-      "name": "Kaiten", "input": "214", "button": "pommel",
+      "name": "Kaiten",
+      "input": "214",
+      "button": "pommel",
       "desc": "Pivot qui change de garde instantanément + coup de pommeau.",
       "anim": "pommel",
-      "startup": 10, "active": 2, "recovery": 12,
-      "damage": 0, "hitstun": 14, "hitstop": 5, "knockback": 2.0,
+      "startup": 9,
+      "active": 2,
+      "recovery": 11,
+      "damage": 0,
+      "hitstun": 14,
+      "hitstop": 5,
+      "knockback": 2.0,
       "guard_flip_at": 3,
-      "hitboxes": [{"from": [0.1, 1.5, 0.4], "to": [0.0, 1.5, 1.05], "radius": 0.16}]
+      "hitboxes": [
+        {
+          "from": [
+            0.1,
+            1.5,
+            0.4
+          ],
+          "to": [
+            0.0,
+            1.5,
+            1.05
+          ],
+          "radius": 0.16
+        }
+      ]
     },
-
     "236_blade": {
-      "name": "Ryūsen", "input": "236", "button": "blade",
+      "name": "Ryūsen",
+      "input": "236",
+      "button": "blade",
       "desc": "Dash traversant avec une coupe au passage : on finit dans le dos de l'adversaire.",
       "anim": "horizontal",
-      "startup": 10, "active": 8, "recovery": 24,
-      "damage": 110, "hitstun": 24, "hitstop": 10, "knockback": 1.0,
-      "movement": [{"from": 8, "to": 19, "forward": 18.0}],
-      "no_pushbox": [6, 22],
-      "hitboxes": [{"from": [0.7, 1.2, -0.4], "to": [0.7, 1.2, 1.0], "radius": 0.38}]
+      "startup": 9,
+      "active": 8,
+      "recovery": 22,
+      "damage": 110,
+      "hitstun": 24,
+      "hitstop": 13,
+      "knockback": 1.0,
+      "movement": [
+        {
+          "from": 7,
+          "to": 17,
+          "forward": 18.0
+        }
+      ],
+      "no_pushbox": [
+        5,
+        20
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.7,
+            1.2,
+            -0.4
+          ],
+          "to": [
+            0.7,
+            1.2,
+            1.0
+          ],
+          "radius": 0.38
+        }
+      ]
     },
     "236_pommel": {
-      "name": "Suigetsu", "input": "236", "button": "pommel",
+      "name": "Suigetsu",
+      "input": "236",
+      "button": "pommel",
       "desc": "Dash avant + frappe au plexus, gros stagger qui ouvre un mixup.",
       "anim": "pommel",
-      "startup": 12, "active": 3, "recovery": 14,
-      "damage": 0, "hitstun": 24, "hitstop": 7, "knockback": 1.0,
-      "movement": [{"from": 2, "to": 11, "forward": 14.0}],
-      "hitboxes": [{"from": [0.0, 1.25, 0.3], "to": [0.0, 1.25, 1.0], "radius": 0.2}]
+      "startup": 10,
+      "active": 3,
+      "recovery": 13,
+      "damage": 0,
+      "hitstun": 24,
+      "hitstop": 9,
+      "knockback": 1.0,
+      "movement": [
+        {
+          "from": 2,
+          "to": 9,
+          "forward": 15.0
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.0,
+            1.25,
+            0.3
+          ],
+          "to": [
+            0.0,
+            1.25,
+            1.0
+          ],
+          "radius": 0.2
+        }
+      ]
     },
-
     "66_blade": {
-      "name": "Ressen", "input": "66", "button": "blade",
+      "name": "Ressen",
+      "input": "66",
+      "button": "blade",
       "desc": "Saut en avant + coupe plongeante (overhead).",
       "anim": "down",
-      "startup": 20, "active": 4, "recovery": 22,
-      "damage": 130, "hitstun": 24, "hitstop": 12, "knockback": 2.0,
-      "movement": [{"from": 1, "to": 20, "forward": 6.0, "up": 6.0}],
-      "hitboxes": [{"from": [0.1, 2.1, 0.8], "to": [0.0, 0.3, 1.4], "radius": 0.14}],
-      "tags": ["overhead"]
+      "startup": 18,
+      "active": 4,
+      "recovery": 20,
+      "damage": 130,
+      "hitstun": 24,
+      "hitstop": 15,
+      "knockback": 2.0,
+      "movement": [
+        {
+          "from": 1,
+          "to": 18,
+          "forward": 6.0,
+          "up": 6.5
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.1,
+            2.1,
+            0.8
+          ],
+          "to": [
+            0.0,
+            0.3,
+            1.4
+          ],
+          "radius": 0.14
+        }
+      ],
+      "tags": [
+        "overhead"
+      ]
     },
     "66_pommel": {
-      "name": "Hiza-geri", "input": "66", "button": "pommel",
+      "name": "Hiza-geri",
+      "input": "66",
+      "button": "pommel",
       "desc": "Course + genou volant.",
       "anim": "brace",
-      "startup": 14, "active": 4, "recovery": 18,
-      "damage": 0, "hitstun": 20, "hitstop": 7, "knockback": 5.0,
-      "movement": [{"from": 1, "to": 16, "forward": 9.0}, {"from": 8, "to": 8, "up": 3.5}],
-      "hitboxes": [{"from": [0.0, 1.0, 0.4], "to": [0.0, 1.3, 0.85], "radius": 0.3}]
+      "startup": 12,
+      "active": 4,
+      "recovery": 16,
+      "damage": 0,
+      "hitstun": 20,
+      "hitstop": 9,
+      "knockback": 5.0,
+      "movement": [
+        {
+          "from": 1,
+          "to": 16,
+          "forward": 9.0
+        },
+        {
+          "from": 8,
+          "to": 8,
+          "up": 3.5
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.0,
+            1.0,
+            0.4
+          ],
+          "to": [
+            0.0,
+            1.3,
+            0.85
+          ],
+          "radius": 0.3
+        }
+      ]
     },
-
     "623_blade": {
-      "name": "Shōryū", "input": "623", "button": "blade",
+      "name": "Shōryū",
+      "input": "623",
+      "button": "blade",
       "desc": "Coupe montante qui envoie en l'air (launcher, anti-dash).",
       "anim": "rising",
-      "startup": 7, "active": 6, "recovery": 30,
-      "damage": 100, "hitstun": 30, "hitstop": 10, "knockback": 1.5, "launch": 9.0,
-      "movement": [{"from": 1, "to": 7, "forward": 3.0}],
-      "hitboxes": [{"from": [0.2, 0.3, 0.9], "to": [0.1, 2.4, 1.0], "radius": 0.16}]
+      "startup": 6,
+      "active": 6,
+      "recovery": 28,
+      "damage": 100,
+      "hitstun": 30,
+      "hitstop": 13,
+      "knockback": 1.5,
+      "launch": 9.0,
+      "movement": [
+        {
+          "from": 1,
+          "to": 7,
+          "forward": 3.0
+        }
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.2,
+            0.3,
+            0.9
+          ],
+          "to": [
+            0.1,
+            2.4,
+            1.0
+          ],
+          "radius": 0.16
+        }
+      ]
     },
     "623_pommel": {
-      "name": "Tsuka-age", "input": "623", "button": "pommel",
+      "name": "Tsuka-age",
+      "input": "623",
+      "button": "pommel",
       "desc": "Uppercut au pommeau, invincible au début mais grosse recovery.",
       "anim": "rising",
-      "startup": 5, "active": 4, "recovery": 36,
-      "damage": 0, "hitstun": 24, "hitstop": 8, "knockback": 1.0, "launch": 6.0,
-      "invuln": [1, 8],
-      "hitboxes": [{"from": [0.0, 0.8, 0.5], "to": [0.0, 2.1, 0.8], "radius": 0.22}]
+      "startup": 5,
+      "active": 4,
+      "recovery": 34,
+      "damage": 0,
+      "hitstun": 24,
+      "hitstop": 10,
+      "knockback": 1.0,
+      "launch": 6.0,
+      "invuln": [
+        1,
+        8
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.0,
+            0.8,
+            0.5
+          ],
+          "to": [
+            0.0,
+            2.1,
+            0.8
+          ],
+          "radius": 0.22
+        }
+      ]
     },
-
     "44_blade": {
-      "name": "Chiburi (troll)", "input": "44", "button": "blade",
+      "name": "Chiburi (troll)",
+      "input": "44",
+      "button": "blade",
       "desc": "Secoue la lame : du « sang » tache l'écran adverse. (Tache sur l'écran : étape 3.)",
       "anim": "flick",
-      "startup": 18, "active": 2, "recovery": 16,
-      "damage": 0, "hitstun": 0, "hitstop": 3,
-      "hitboxes": [{"from": [0.0, 1.6, 0.5], "to": [0.0, 1.6, 3.5], "radius": 0.3}],
-      "tags": ["splash"]
+      "startup": 16,
+      "active": 2,
+      "recovery": 14,
+      "damage": 0,
+      "hitstun": 0,
+      "hitstop": 3,
+      "hitboxes": [
+        {
+          "from": [
+            0.0,
+            1.6,
+            0.5
+          ],
+          "to": [
+            0.0,
+            1.6,
+            3.5
+          ],
+          "radius": 0.3
+        }
+      ],
+      "tags": [
+        "splash"
+      ]
     },
     "44_pommel": {
-      "name": "Nōtō (troll)", "input": "44", "button": "pommel",
+      "name": "Nōtō (troll)",
+      "input": "44",
+      "button": "pommel",
       "desc": "Rengaine lentement et tourne le dos. (Contre automatique : étape 3.)",
       "anim": "sheathe",
-      "startup": 10, "active": 0, "recovery": 30,
+      "startup": 10,
+      "active": 0,
+      "recovery": 30,
       "hitboxes": []
     }
   }

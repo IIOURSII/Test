@@ -42,7 +42,7 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 	var wish := wish_dir(f, held)
 
 	if f.action == FighterState.Action.ATTACK:
-		_step_attack(f, mv, moves)
+		_step_attack(f, cfg, moves, wish)
 	if f.action == FighterState.Action.HITSTUN:
 		_step_hitstun(f, mv)
 	if f.action == FighterState.Action.DASH:
@@ -55,7 +55,7 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 		_try_dash(f, mv, held, pressed, wish)
 		_try_guard_switch(f, pressed)
 
-	_try_start_attack(f, cfg, moves)
+	_try_start_attack(f, cfg, moves, wish)
 	_integrate(f, mv)
 
 
@@ -100,7 +100,7 @@ static func _record_attack_press(f: FighterState, pressed: int, cfg: Dictionary,
 	f.pending_age = 0
 
 
-static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet) -> void:
+static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, wish: Vector3) -> void:
 	if f.pending_move == "":
 		return
 	if f.pending_age > int(cfg["input"]["button_buffer_ticks"]):
@@ -122,10 +122,10 @@ static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet) 
 	if not allowed:
 		return
 	_clear_pending(f)
-	start_move(f, next_id, moves)
+	start_move(f, next_id, moves, cfg, wish)
 
 
-static func start_move(f: FighterState, id: String, moves: MoveSet) -> void:
+static func start_move(f: FighterState, id: String, moves: MoveSet, cfg: Dictionary, wish: Vector3) -> void:
 	var m := moves.get_move(id)
 	if m.is_empty():
 		return
@@ -135,7 +135,11 @@ static func start_move(f: FighterState, id: String, moves: MoveSet) -> void:
 	f.move_tick = 1
 	f.hit_groups = 0
 	f.crouch = 0
-	_apply_move_tick(f, m)
+	# On garde une partie de son élan : pas de "frein à main" en lançant un coup.
+	var carry := float(cfg["attack"]["momentum_carry"])
+	f.vel.x *= carry
+	f.vel.z *= carry
+	_apply_move_tick(f, m, cfg, wish)
 
 
 static func _clear_pending(f: FighterState) -> void:
@@ -145,17 +149,13 @@ static func _clear_pending(f: FighterState) -> void:
 	f.pending_age = 0
 
 
-static func _step_attack(f: FighterState, mv: Dictionary, moves: MoveSet) -> void:
+static func _step_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, wish: Vector3) -> void:
 	var m := moves.get_move(f.move_id)
 	f.move_tick += 1
 	if m.is_empty() or f.move_tick > int(m["total"]):
 		end_move(f)
 		return
-	_apply_move_tick(f, m)
-	if not _has_horizontal_movement(m, f.move_tick) and f.on_ground:
-		var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(mv["ground_accel"]) * DT)
-		f.vel.x = hv.x
-		f.vel.z = hv.z
+	_apply_move_tick(f, m, cfg, wish)
 
 
 static func end_move(f: FighterState) -> void:
@@ -165,27 +165,40 @@ static func end_move(f: FighterState) -> void:
 	f.hit_groups = 0
 
 
-static func _apply_move_tick(f: FighterState, m: Dictionary) -> void:
+## Déplacement pendant un coup :
+## - pendant un "segment" (pas en avant, dash...), on accélère vers sa vitesse (pas de téléportation) ;
+## - sinon l'élan s'amortit en douceur, et on garde un peu de contrôle hors des frames actives.
+static func _apply_move_tick(f: FighterState, m: Dictionary, cfg: Dictionary, wish: Vector3) -> void:
+	var ac: Dictionary = cfg["attack"]
 	var t := f.move_tick
+	var has_seg := false
+	var target := Vector3.ZERO
 	for seg in m["movement"]:
 		if t < int(seg["from"]) or t > int(seg["to"]):
 			continue
 		if seg["has_horizontal"]:
-			var v := f.forward() * float(seg["forward"]) + f.right() * (float(seg["side"]) * f.guard)
-			f.vel.x = v.x
-			f.vel.z = v.z
+			target = f.forward() * float(seg["forward"]) + f.right() * (float(seg["side"]) * f.guard)
+			has_seg = true
 		if float(seg["up"]) != 0.0 and t == int(seg["from"]):
 			f.vel.y = float(seg["up"])
 			f.on_ground = false
+
+	var hv := Vector3(f.vel.x, 0.0, f.vel.z)
+	if has_seg:
+		hv = hv.move_toward(target, float(ac["segment_accel"]) * DT)
+	elif f.on_ground:
+		hv *= exp(-float(ac["damping"]) * DT)
+		var startup := int(m["startup"])
+		var in_active := t > startup and t <= startup + int(m["active"])
+		var steer := Vector3.ZERO
+		if not in_active:
+			steer = wish * float(cfg["movement"]["walk_speed"]) * float(ac["steer_ratio"])
+		hv = hv.move_toward(steer, float(ac["friction"]) * DT)
+	f.vel.x = hv.x
+	f.vel.z = hv.z
+
 	if int(m["guard_flip_at"]) == t:
 		f.guard = -f.guard
-
-
-static func _has_horizontal_movement(m: Dictionary, t: int) -> bool:
-	for seg in m["movement"]:
-		if seg["has_horizontal"] and t >= int(seg["from"]) and t <= int(seg["to"]):
-			return true
-	return false
 
 
 static func is_invulnerable(f: FighterState, moves: MoveSet) -> bool:
