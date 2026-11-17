@@ -97,11 +97,11 @@ func poll(world: SimWorld, mi: int, fi: int) -> InputFrame:
 					return _frame(InputFrame.PARRY | crouch)
 				"dodge":
 					return _frame(InputFrame.BACK)
-	# Son coup est bloqué : il annule en backdash au Ki pour rester sûr (s'il en a).
+	# Son coup est bloqué : il annule en backdash (↓↘→ puis ↓ + clic) pour rester sûr.
 	if me.action == FighterState.Action.ATTACK and foe.action == FighterState.Action.BLOCKSTUN \
-			and me.ki >= 300 and rng.randf() < _f("punish", 0.6) * 0.15:
-		_queue.clear()
-		return _frame(InputFrame.DASH | InputFrame.BACK)
+			and _queue.is_empty() and rng.randf() < _f("punish", 0.6) * 0.15:
+		_queue_dash(me, InputFrame.BACK)
+		return _frame(int(_queue.pop_front()))
 	if _hold_block > 0 and foe.action == FighterState.Action.ATTACK:
 		_hold_block -= 1
 		return _frame(InputFrame.PARRY)
@@ -115,10 +115,10 @@ func poll(world: SimWorld, mi: int, fi: int) -> InputFrame:
 
 	# Punir une ouverture (parry raté, recovery, potion, provocation...).
 	if _is_opening(world, foe, fi) and dist < 3.2 and rng.randf() < _f("punish", 0.6) * 0.25:
-		_queue_move(me, "5" if dist < 2.1 else "6", "blade", 2 if dist < 2.1 else 0)
+		_queue_move(me, "5" if dist < 2.1 else "426", "blade", 2 if dist < 2.1 else 0)
 		return _frame(int(_queue.pop_front()))
 	if _is_opening(world, foe, fi) and dist >= 3.2 and dist < 6.5 and rng.randf() < _f("punish", 0.6) * 0.08:
-		_queue_move(me, "236", "blade")
+		_queue_move(me, "436", "blade")
 		return _frame(int(_queue.pop_front()))
 
 	# Anti-dash : l'adversaire fonce dessus -> coupe montante.
@@ -135,11 +135,11 @@ func poll(world: SimWorld, mi: int, fi: int) -> InputFrame:
 	if dist > 3.0:
 		b |= InputFrame.FORWARD
 		if dist > 6.0 and rng.randf() < 0.025:
-			# Approche en dashs enchaînés (annulés au Ki) si la jauge le permet.
-			var dd := InputFrame.DASH | InputFrame.FORWARD
-			_queue = [dd, dd]
-			if me.ki >= 400:
-				_queue.append_array([InputFrame.FORWARD, InputFrame.FORWARD, InputFrame.FORWARD, InputFrame.FORWARD, dd, dd])
+			# Approche en dash (↓↘→ + clic), parfois deux à la suite.
+			_queue_dash(me, 0)
+			if rng.randf() < 0.5:
+				var first := _queue.duplicate()
+				_queue.append_array(first)
 	elif dist < 1.6:
 		b |= InputFrame.BACK
 	if _strafe > 0.5:
@@ -201,7 +201,7 @@ func _choose_attack(me: FighterState, foe: FighterState, dist: float) -> void:
 	var guarding := foe.action == FighterState.Action.BLOCK or foe.action == FighterState.Action.BLOCKSTUN
 	if guarding:
 		if foe.is_crouching() and dist < 3.0:
-			_queue_move(me, "41236", "blade")      # overhead contre la garde basse
+			_queue_move(me, "123", "blade")        # overhead contre la garde basse
 		elif dist < 2.0:
 			_queue_move(me, "5", "pommel")         # le pommeau brise la garde
 		return
@@ -211,23 +211,44 @@ func _choose_attack(me: FighterState, foe: FighterState, dist: float) -> void:
 		elif r < 0.6:
 			_queue_move(me, "5", "blade", 2)       # Kesa-giri x3
 		elif r < 0.75:
-			_queue_move(me, "4", "blade")
+			_queue_move(me, "624", "blade")
 		else:
 			_queue_move(me, "5", "pommel")
 	elif dist < 3.0:
 		if special and r < 0.4:
-			_queue_move(me, "41236", "blade")
+			_queue_move(me, "123", "blade")
 		elif r < 0.7:
-			_queue_move(me, "6", "blade")
+			_queue_move(me, "426", "blade")
 		else:
-			_queue_move(me, "236", "pommel")
+			_queue_move(me, "436", "pommel")
 	elif special:
-		_queue_move(me, "236", "blade")
+		_queue_move(me, "436", "blade")
 
 
-## Prépare la saisie d'un coup : directions tick par tick puis clic (+ enchaînements).
+## Dash universel : ↓↘→ (miroir en garde gauche) + clic ; trail = direction ajoutée (sens du dash).
+func _queue_dash(me: FighterState, trail: int) -> void:
+	_queue.clear()
+	for c in "236":
+		var dg := int(c)
+		dg = MotionParser.mirror_dir(dg) if me.guard == FighterState.GUARD_LEFT else dg
+		_queue.append(_dir_bits(dg))
+		_queue.append(_dir_bits(dg))
+	if trail != 0:
+		_queue.append(trail)
+		_queue.append(trail | InputFrame.BLADE)
+	else:
+		_queue.append(0)
+		_queue.append(InputFrame.BLADE)
+	_queue.append(0)
+
+
+## Prépare la saisie d'un coup : 3 directions tick par tick puis clic (+ enchaînements).
+## Le coup de base "5" n'existe que si la mémoire de directions n'est pas pleine.
 func _queue_move(me: FighterState, notation: String, button: String, chain: int = 0) -> void:
 	_queue.clear()
+	if notation == "5" and MotionParser.memory(me.dir_history).size() >= 3:
+		notation = "426"
+		chain = 0
 	var btn := InputFrame.BLADE if button == "blade" else InputFrame.POMMEL
 	var dirs: Array[int] = []
 	for c in notation:
@@ -235,11 +256,9 @@ func _queue_move(me: FighterState, notation: String, button: String, chain: int 
 		dirs.append(MotionParser.mirror_dir(dgt) if me.guard == FighterState.GUARD_LEFT else dgt)
 	_queue.append(0)
 	_queue.append(0)
-	if notation.length() == 1:
-		var hb := _dir_bits(dirs[0])
-		_queue.append(hb)
-		_queue.append(hb | btn)
-		_queue.append(hb | btn)
+	if notation == "5":
+		_queue.append(btn)
+		_queue.append(btn)
 	else:
 		for dg in dirs:
 			_queue.append(_dir_bits(dg))

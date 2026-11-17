@@ -1,24 +1,19 @@
 class_name MotionParser
 extends RefCounted
-## Lit les manips type jeu de combat (notation numpad) dans l'historique des directions.
+## MÉMOIRE DE DIRECTIONS.
+## Le jeu retient les directions tapées (seulement ← → ↓ ↙ ↘ ; avancer, sauter et s'accroupir ne comptent pas).
+## Au clic, les 3 dernières directions DIFFÉRENTES forment la "manip" du coup (ex : ↓↘→ = 236).
+## Pas de limite de temps : la mémoire se vide seulement quand un coup est confirmé.
 ##
-##   7 8 9        Seules comptent : 4 = gauche, 6 = droite, 2 = reculer,
-##   4 5 6        1 = reculer+gauche, 3 = reculer+droite, 5 = rien.
-##   1 2 3        Avancer, sauter et s'accroupir sont ignorés.
-##
-## L'historique stocke les directions PHYSIQUES. En garde gauche on inverse
-## (4<->6, 1<->3) avant de chercher : les coups sont écrits pour la garde droite.
+## Notation numpad (garde droite) :  1 = ↙   2 = ↓   3 = ↘   4 = ←   6 = →
+## En garde gauche, tout est inversé en miroir (4 <-> 6, 1 <-> 3).
 
-## Ordre de priorité si plusieurs manips correspondent (remplaçable dans combat.json > input > motions).
-## Minimum 3 directions : quarts de cercle (236, 214), DP (623, 421), demi-cercles (41236, 63214).
-const MOTIONS := ["63214", "41236", "623", "421", "236", "214"]
-const MAX_HISTORY := 24
+const MAX_HISTORY := 8
+const ARROWS := {1: "↙", 2: "↓", 3: "↘", 4: "←", 6: "→", 5: "·"}
 
 
-## Direction numpad physique à partir des touches tenues.
+## Direction numpad physique à partir des touches tenues (5 = aucune).
 static func dir_from_buttons(held: int) -> int:
-	if held & InputFrame.DASH:
-		return 5  # les directions tapées pendant un dash ne comptent pas
 	var l := (held & InputFrame.LEFT) != 0
 	var r := (held & InputFrame.RIGHT) != 0
 	var b := (held & InputFrame.BACK) != 0
@@ -43,59 +38,66 @@ static func mirror_dir(d: int) -> int:
 	return d
 
 
-## Ajoute la direction du tick à l'historique (seulement quand elle change).
+static func mirror_notation(s: String) -> String:
+	var out := ""
+	for c in s:
+		out += str(mirror_dir(int(c)))
+	return out
+
+
+## Notation -> flèches (ex : "236" -> "↓↘→").
+static func arrows(notation: String) -> String:
+	var out := ""
+	for c in notation:
+		out += str(ARROWS.get(int(c), c))
+	return out
+
+
+## Mémorise la direction du tick si elle change (les "5" = relâché ne sont pas gardés).
 static func record(f: FighterState, held: int) -> void:
 	var d := dir_from_buttons(held)
 	if d == f.last_dir:
 		return
 	f.last_dir = d
+	if d == 5:
+		return
 	f.dir_history.append([d, f.local_tick])
 	if f.dir_history.size() > MAX_HISTORY:
 		f.dir_history.pop_front()
 
 
-## Renvoie la notation reconnue ("236", "6", "5"...) au moment du clic.
-## window = fenêtre pour 3 directions ; extra = ticks en plus par direction supplémentaire.
-static func resolve(f: FighterState, window: int, motions: Array = MOTIONS, extra: int = 5) -> String:
-	var now := f.local_tick
-	var guard_left := f.guard == FighterState.GUARD_LEFT
-	# On garde les entrées encore "vivantes" dans la fenêtre.
-	for m in motions:
-		var seq := str(m)
-		var w := window + extra * maxi(seq.length() - 3, 0)
-		if _match(seq, _dirs_in_window(f, now, w, guard_left)):
-			return seq
-
-	var held := f.last_dir
-	if guard_left:
-		held = mirror_dir(held)
-	if held == 1 or held == 2 or held == 3:
-		return "2"
-	if held == 4:
-		return "4"
-	if held == 6:
-		return "6"
-	return "5"
+## Les 3 dernières directions différentes (de la plus ancienne à la plus récente), en physique.
+static func memory(history: Array) -> Array[int]:
+	var out: Array[int] = []
+	for i in range(history.size() - 1, -1, -1):
+		var d: int = int(history[i][0])
+		if not out.has(d):
+			out.push_front(d)
+			if out.size() == 3:
+				break
+	return out
 
 
-static func _dirs_in_window(f: FighterState, now: int, window: int, guard_left: bool) -> Array[int]:
-	var dirs: Array[int] = []
+static func notation_of(mem: Array[int], guard: int) -> String:
+	var s := ""
+	for d in mem:
+		s += str(mirror_dir(d) if guard == FighterState.GUARD_LEFT else d)
+	return s
+
+
+## Que fait un clic maintenant ? Renvoie {"kind": "dash"/"move", "notation": "426"..., "trail"}.
+## Dash : la manip du dash, éventuellement suivie (moins de grace ticks) d'une direction = sens du dash
+## ("trail" = vrai). Sans direction ajoutée, le dash part tout droit devant.
+static func resolve_click(f: FighterState, dash_triple: String, grace: int) -> Dictionary:
+	var mem := memory(f.dir_history)
+	var nota := notation_of(mem, f.guard) if mem.size() == 3 else "5"
+	if nota == dash_triple:
+		return {"kind": "dash", "notation": nota, "trail": false}
 	var n := f.dir_history.size()
-	for i in n:
-		var end_tick: int = now if i == n - 1 else int(f.dir_history[i + 1][1])
-		if end_tick < now - window:
-			continue
-		var d: int = int(f.dir_history[i][0])
-		dirs.append(mirror_dir(d) if guard_left else d)
-	return dirs
-
-
-## Cherche la séquence dans l'ordre (en partant de la plus récente).
-static func _match(seq: String, dirs: Array[int]) -> bool:
-	var idx := seq.length() - 1
-	for k in range(dirs.size() - 1, -1, -1):
-		if dirs[k] == int(seq[idx]):
-			idx -= 1
-			if idx < 0:
-				return true
-	return false
+	if n >= 2:
+		var last_tick := int(f.dir_history[n - 1][1])
+		if f.local_tick - last_tick <= grace:
+			var prev := memory(f.dir_history.slice(0, n - 1))
+			if prev.size() == 3 and notation_of(prev, f.guard) == dash_triple:
+				return {"kind": "dash", "notation": dash_triple, "trail": true}
+	return {"kind": "move", "notation": nota, "trail": false}

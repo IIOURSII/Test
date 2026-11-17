@@ -122,7 +122,7 @@ func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup()
-	hud.configure(_names(), mode == "local", mode == "sandbox")
+	hud.configure(_names(), mode == "local", mode == "sandbox", 2 if mode == "local" else 1)
 
 	move_list = MoveList.new()
 	add_child(move_list)

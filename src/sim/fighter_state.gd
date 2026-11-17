@@ -34,7 +34,7 @@ var hitstop: int = 0          ## micro-freeze : le combattant est figé
 # --- Buffer d'inputs ---
 var local_tick: int = 0
 var last_dir: int = 5
-var dir_history: Array = []   ## [[direction numpad, tick de début], ...]
+var dir_history: Array = []   ## mémoire de directions : [[direction numpad, tick], ...]
 var pending_move: String = "" ## coup demandé mais pas encore lancé
 var pending_input: String = ""
 var pending_button: String = ""
@@ -74,8 +74,6 @@ var floor_y: float = 0.0        ## hauteur du sol sous le combattant (plateforme
 var ground_friction: float = 1.0 ## < 1 : sol glissant (or, glace...)
 var potions_left: int = 1
 var bind_presses: int = 0       ## clics pendant un bind (clash)
-var ki: int = 1000              ## Ki : se dépense pour annuler une action (dash/attaque)
-var ki_delay: int = 0           ## ticks avant que le Ki recommence à remonter
 
 var prev_buttons: int = 0
 
@@ -134,8 +132,6 @@ func copy() -> FighterState:
 	c.ground_friction = ground_friction
 	c.potions_left = potions_left
 	c.bind_presses = bind_presses
-	c.ki = ki
-	c.ki_delay = ki_delay
 	c.prev_buttons = prev_buttons
 	return c
 

@@ -1,9 +1,9 @@
 {
-  "_aide": "Frame data du KATANA. Les inputs sont écrits en GARDE DROITE (le jeu les inverse en garde gauche). Durées en ticks (60 = 1 s). startup = ticks avant que la hitbox apparaisse ; active = ticks où elle peut toucher ; recovery = ticks de récupération après. Hitbox : [côté, hauteur, avant] en mètres depuis les pieds du perso (côté positif = côté de l'arme). movement : vitesses en m/s pendant certains ticks (forward = avant, side = côté de l'arme, up = impulsion vers le haut). F6 en jeu = recharger. Rythme : attaques LENTES (startup long et lisible) ; la vitesse vient des déplacements et des annulations (Ki).",
+  "_aide": "Frame data du KATANA. Chaque coup = 3 DIRECTIONS DIFFÉRENTES mémorisées puis un clic (LAME ou POMMEAU), écrites pour la GARDE DROITE en notation numpad (1 = ↙, 2 = ↓, 3 = ↘, 4 = ←, 6 = →) ; inversées en garde gauche. Clic avec moins de 3 directions en mémoire = coup de base (5). ↓↘→ (236) = DASH universel. Durées en ticks (60 = 1 s). Hitbox : [côté, hauteur, avant] en mètres. F6 en jeu = recharger.",
   "weapon": "Katana",
   "mechanic": {
     "type": "katana",
-    "_aide": "LA VOIE DU SABRE. Zanshin : points gagnés en lisant l'adversaire (parry, counter-hit, punish, contre en posture), perdus quand on se fait counter. cancel_cost = points pour annuler la recovery d'un coup qui a touché/été bloqué (touche A). Issen = Iai relâché avec issen_cost points. Tranchant (edge) : 100 = affûté ; baisse quand on touche/est bloqué/est paré ; le Chiburi (63214 LAME) le restaure. Posture : 421 LAME maintenu = posture Iai (charge + contre automatique sur les attaques LAME de face).",
+    "_aide": "LA VOIE DU SABRE. Zanshin : points gagnés en lisant l'adversaire (parry, counter-hit, punish, contre en posture), perdus quand on se fait counter. cancel_cost = points pour annuler la recovery d'un coup qui a touché/été bloqué (touche A). Issen = Iai relâché avec issen_cost points. Tranchant (edge) : 100 = affûté ; baisse quand on touche/est bloqué/est paré ; le Chiburi (321 LAME) le restaure. Posture : 421 LAME maintenu = posture Iai (charge + contre automatique sur les attaques LAME de face).",
     "zanshin_max": 3,
     "cancel_cost": 1,
     "issen_cost": 3,
@@ -20,7 +20,7 @@
     "stance_counter_stun": 32,
     "stance_counter_hitstop": 18
   },
-  "mechanic_desc": "[b]LA VOIE DU SABRE[/b] — [b]Posture Iai[/b] : 421 LAME, garde le clic enfoncé pour rester rengainé (charge), relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture. [b]Zanshin 残心[/b] (3 points max) : gagné par parry, counter-hit, punish et contre en posture ; perdu si on se fait counter. 1 point : appuie sur A pendant un coup qui a touché ou été bloqué pour annuler sa recovery (et changer de garde). 3 points : relâcher le Iai déclenche [b]Issen 一閃[/b], coupe éclair traversante qui brise la garde (seul un parry l'arrête). [b]Tranchant 刃[/b] : la lame s'émousse et se tache quand elle est bloquée ou parée (moins de dégâts) ; le Chiburi (63214 LAME) la nettoie.",
+  "mechanic_desc": "[b]LA VOIE DU SABRE[/b] — [b]Posture Iai[/b] : 421 LAME, garde le clic enfoncé pour rester rengainé (charge), relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture. [b]Zanshin 残心[/b] (3 points max) : gagné par parry, counter-hit, punish et contre en posture ; perdu si on se fait counter. 1 point : appuie sur A pendant un coup qui a touché ou été bloqué pour annuler sa recovery (et changer de garde). 3 points : relâcher le Iai déclenche [b]Issen 一閃[/b], coupe éclair traversante qui brise la garde (seul un parry l'arrête). [b]Tranchant 刃[/b] : la lame s'émousse et se tache quand elle est bloquée ou parée (moins de dégâts) ; le Chiburi (321 LAME) la nettoie.",
   "style": {
     "_aide": "Identité visuelle de l'arme (couleurs RVB 0..1).",
     "slash_core": [
@@ -217,9 +217,9 @@
         }
       ]
     },
-    "6_blade": {
+    "426_blade": {
       "name": "Tsuki",
-      "input": "6",
+      "input": "426",
       "button": "blade",
       "desc": "Estoc avec un pas en avant, bonne allonge.",
       "anim": "thrust",
@@ -253,9 +253,9 @@
         }
       ]
     },
-    "6_pommel": {
+    "426_pommel": {
       "name": "Tai-atari",
-      "input": "6",
+      "input": "426",
       "button": "pommel",
       "desc": "Coup d'épaule qui repousse l'adversaire.",
       "anim": "brace",
@@ -289,9 +289,9 @@
         }
       ]
     },
-    "4_blade": {
+    "624_blade": {
       "name": "Yoko-giri",
-      "input": "4",
+      "input": "624",
       "button": "blade",
       "desc": "Coupe horizontale large côté garde, attrape les esquives latérales.",
       "anim": "horizontal",
@@ -348,9 +348,9 @@
         }
       ]
     },
-    "4_pommel": {
+    "624_pommel": {
       "name": "Yoko-ate",
-      "input": "4",
+      "input": "624",
       "button": "pommel",
       "desc": "Pas latéral + pommeau, pour se repositionner.",
       "anim": "pommel",
@@ -384,9 +384,9 @@
         }
       ]
     },
-    "2_blade": {
+    "632_blade": {
       "name": "Retraite",
-      "input": "2",
+      "input": "632",
       "button": "blade",
       "desc": "Recul + coupe montante qui punit ceux qui poursuivent.",
       "anim": "rising",
@@ -420,9 +420,9 @@
         }
       ]
     },
-    "2_pommel": {
+    "632_pommel": {
       "name": "Hiki",
-      "input": "2",
+      "input": "632",
       "button": "pommel",
       "desc": "Backdash très rapide (invincible au début), meilleur outil de fuite.",
       "anim": "none",
@@ -583,9 +583,9 @@
         }
       ]
     },
-    "236_blade": {
+    "436_blade": {
       "name": "Ryūsen",
-      "input": "236",
+      "input": "436",
       "button": "blade",
       "desc": "Dash traversant avec une coupe au passage : on finit dans le dos de l'adversaire.",
       "anim": "horizontal",
@@ -623,9 +623,9 @@
         }
       ]
     },
-    "236_pommel": {
+    "436_pommel": {
       "name": "Suigetsu",
-      "input": "236",
+      "input": "436",
       "button": "pommel",
       "desc": "Dash avant + frappe au plexus, gros stagger qui ouvre un mixup.",
       "anim": "pommel",
@@ -659,9 +659,9 @@
         }
       ]
     },
-    "41236_blade": {
+    "123_blade": {
       "name": "Ressen",
-      "input": "41236",
+      "input": "123",
       "button": "blade",
       "desc": "Saut en avant + coupe plongeante (overhead).",
       "anim": "down",
@@ -699,9 +699,9 @@
         "overhead"
       ]
     },
-    "41236_pommel": {
+    "123_pommel": {
       "name": "Hiza-geri",
-      "input": "41236",
+      "input": "123",
       "button": "pommel",
       "desc": "Course + genou volant.",
       "anim": "brace",
@@ -811,9 +811,9 @@
         }
       ]
     },
-    "63214_blade": {
+    "321_blade": {
       "name": "Chiburi (troll)",
-      "input": "63214",
+      "input": "321",
       "button": "blade",
       "desc": "Secoue la lame : nettoie le sang, restaure le Tranchant à 100 %, et éclabousse l'écran adverse.",
       "anim": "flick",
@@ -843,9 +843,9 @@
       ],
       "restore_edge": true
     },
-    "63214_pommel": {
+    "321_pommel": {
       "name": "Nōtō (troll)",
-      "input": "63214",
+      "input": "321",
       "button": "pommel",
       "desc": "Rengaine lentement et TOURNE LE DOS. Toute attaque pendant les premiers ticks déclenche un contre dévastateur (même dans le dos) ; après, tu es vulnérable.",
       "anim": "sheathe",

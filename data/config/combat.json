@@ -9,8 +9,8 @@
     "crouch_eye_height": 1.0
   },
   "movement": {
-    "walk_speed": 3.2,
-    "crouch_speed": 1.5,
+    "walk_speed": 2.4,
+    "crouch_speed": 1.2,
     "ground_accel": 24.0,
     "air_accel": 7.0,
     "jump_velocity": 6.8,
@@ -32,18 +32,6 @@
     "steer_ratio": 0.3,
     "segment_accel": 200.0
   },
-  "cancel": {
-    "_aide": "ANNULATIONS (Ki 気). Tout peut être annulé : dash pendant un dash, attaque pendant une attaque, dash pendant une attaque (feinte/fuite). Chaque annulation coûte du Ki (jauge blanche, max ki_max) qui se recharge de regen par tick, après regen_delay ticks sans dépense. min_tick = on ne peut pas annuler les tout premiers ticks d'une action. Mettre un coût à 0 = annulation gratuite.",
-    "ki_max": 1000,
-    "regen": 7,
-    "regen_delay": 35,
-    "min_tick": 3,
-    "dash_from_dash": 250,
-    "dash_from_attack": 300,
-    "attack_from_attack": 350,
-    "attack_on_hit": 200,
-    "attack_from_dash": 120
-  },
   "telegraph": {
     "_aide": "Reflet sur la lame (lisibilité) : apparaît ce nombre de ticks avant la sortie du coup, pour les coups dont le startup est au moins min_startup.",
     "before": 8,
@@ -52,7 +40,7 @@
   "guard": {
     "_aide": "GARDE (maintenir E) et PARRY (appuyer sur E juste avant l'impact). angle_deg = la garde ne protège que de face. parry_window = durée (ticks) du parry après l'appui ; parry_lockout = délai avant de pouvoir retenter (anti-spam). Le POMMEAU brise la garde. Les coups 'overhead' doivent être bloqués debout, les coups 'low' accroupi. guard_* = jauge de garde : bloquer la remplit, pleine = garde brisée (crush).",
     "angle_deg": 80.0,
-    "walk_speed": 1.6,
+    "walk_speed": 1.3,
     "blockstun_ratio": 0.65,
     "min_blockstun": 6,
     "pushback": 2.5,
@@ -128,18 +116,10 @@
     "_aide": "Taille utilisée par le terrain d'entraînement. Les autres maps ont leurs propres dimensions (data/maps/)."
   },
   "input": {
-    "motion_window_ticks": 16,
-    "button_buffer_ticks": 6,
-    "_aide_input": "motions = manips reconnues, par ordre de priorité (minimum 3 directions). motion_window_ticks = temps max pour une manip de 3 directions, + motion_window_per_extra par direction en plus (demi-cercles). button_buffer = un clic fait pendant un coup est gardé en mémoire ce nombre de ticks.",
-    "motion_window_per_extra": 5,
-    "motions": [
-      "63214",
-      "41236",
-      "623",
-      "421",
-      "236",
-      "214"
-    ]
+    "_aide": "MÉMOIRE DE DIRECTIONS : le jeu retient les 3 dernières directions DIFFÉRENTES tapées (← → ↓ ↙ ↘ ; avancer/sauter/s'accroupir ne comptent pas), sans limite de temps. Un clic confirme le coup correspondant, à N'IMPORTE QUEL moment (annule l'action en cours), puis la mémoire se vide. dash_triple = manip du dash universel. dash_grace_ticks = une direction tapée juste après la manip du dash (moins de ce nombre de ticks) donne la direction du dash au lieu d'être mémorisée. button_buffer_ticks = un clic fait pendant un hitstop/coup reçu est gardé en mémoire ce nombre de ticks.",
+    "dash_triple": "236",
+    "dash_grace_ticks": 10,
+    "button_buffer_ticks": 6
   },
   "aim_assist": {
     "angle_deg": 20.0,

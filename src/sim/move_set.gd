@@ -3,7 +3,8 @@ extends RefCounted
 ## Les coups d'une arme, lus depuis data/weapons/<arme>.json et "nettoyés"
 ## (entiers pour la frame data, Vector3 pour les hitbox, valeurs par défaut).
 
-const INPUT_ORDER := ["5", "6", "4", "2", "236", "214", "623", "421", "41236", "63214"]
+## Ordre d'affichage dans la liste des coups ("236" = dash universel).
+const INPUT_ORDER := ["5", "236", "426", "624", "632", "421", "214", "436", "123", "623", "321"]
 
 var weapon_name: String = ""
 var moves: Dictionary = {}

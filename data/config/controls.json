@@ -11,7 +11,7 @@
     "right":        ["D"],
     "jump":         ["Space"],
     "crouch":       ["Ctrl"],
-    "dash":         ["Shift"],
+    "dash":         [],
     "blade":        ["MOUSE_LEFT"],
     "pommel":       ["MOUSE_RIGHT"],
     "guard_switch": ["A"],

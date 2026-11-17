@@ -5,6 +5,7 @@ extends RefCounted
 
 const DT := 1.0 / 60.0
 const CROUCH_TICKS := 6
+const DASH_ID := "__dash"     ## "coup" spécial : le dash universel (↓↘→ + clic)
 
 
 static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveSet) -> void:
@@ -60,9 +61,6 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 
 	var wish := wish_dir(f, held)
 
-	# Annulations au Ki : dash pendant un dash ou pendant une attaque.
-	_try_cancel_dash(f, cfg, held, pressed, wish)
-
 	# Mécanique du katana : annuler la recovery avec le Zanshin (touche A).
 	if f.cancel_buffer > 0 and f.action == FighterState.Action.ATTACK:
 		if KatanaMechanic.try_cancel(f, moves):
@@ -92,7 +90,6 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 		_step_walk(f, mv, wish, speed_mult)
 		if f.action != FighterState.Action.BLOCK:
 			_try_jump(f, mv, pressed)
-			_try_dash(f, mv, held, pressed, wish)
 			_try_guard_switch(f, pressed)
 		_try_items(f, pressed, cfg, moves)
 
@@ -116,11 +113,6 @@ static func _tick_timers(f: FighterState, cfg: Dictionary) -> void:
 	if f.cancel_buffer > 0:
 		f.cancel_buffer -= 1
 	f.ticks_since_hit += 1
-	var cc: Dictionary = cfg.get("cancel", {})
-	if f.ki_delay > 0:
-		f.ki_delay -= 1
-	else:
-		f.ki = mini(f.ki + int(cc.get("regen", 7)), int(cc.get("ki_max", 1000)))
 	f.burst_gauge = mini(f.burst_gauge + int(bd["gauge_regen"]), int(bd["gauge_max"]))
 	if f.action == FighterState.Action.BLOCK or f.action == FighterState.Action.BLOCKSTUN:
 		f.guard_idle = 0
@@ -161,46 +153,6 @@ static func _step_stun_simple(f: FighterState, mv: Dictionary, after: int) -> vo
 	if f.hitstun <= 0:
 		f.action = after
 		f.action_tick = 0
-
-
-# ---------------------------------------------------------------- Annulations (Ki)
-
-static func spend_ki(f: FighterState, cfg: Dictionary, cost: int) -> bool:
-	if f.ki < cost:
-		return false
-	f.ki -= cost
-	if cost > 0:
-		f.ki_delay = int(cfg.get("cancel", {}).get("regen_delay", 35))
-	return true
-
-
-## Shift + direction pendant un dash ou une attaque : on annule et on redashe.
-static func _try_cancel_dash(f: FighterState, cfg: Dictionary, held: int, pressed: int, wish: Vector3) -> void:
-	if f.action != FighterState.Action.DASH and f.action != FighterState.Action.ATTACK:
-		return
-	if not (held & InputFrame.DASH) or wish == Vector3.ZERO:
-		return
-	if (pressed & InputFrame.DASH) == 0 and (pressed & InputFrame.DIR_MASK) == 0:
-		return
-	var cc: Dictionary = cfg.get("cancel", {})
-	var min_t := int(cc.get("min_tick", 3))
-	var cost := 0
-	if f.action == FighterState.Action.DASH:
-		if f.action_tick < min_t:
-			return
-		cost = int(cc.get("dash_from_dash", 250))
-	else:
-		if f.move_tick < min_t or f.move_id == "burst":
-			return
-		cost = int(cc.get("dash_from_attack", 300))
-	if not f.on_ground and f.air_dash_used:
-		return
-	if not spend_ki(f, cfg, cost):
-		return
-	if f.action == FighterState.Action.ATTACK:
-		end_move(f)
-	_start_dash(f, cfg["movement"], wish)
-	f.pending_fx = "cancel_dash"
 
 
 ## Potion (R) et provocation (T) : seulement quand on est libre.
@@ -254,6 +206,7 @@ static func wish_dir(f: FighterState, held: int) -> Vector3:
 # ---------------------------------------------------------------- Coups
 
 ## Au moment du clic, on lit la manip et on retient le coup demandé.
+## Au clic : on lit la mémoire de directions et on retient le coup demandé (ou le dash).
 static func _record_attack_press(f: FighterState, pressed: int, cfg: Dictionary, moves: MoveSet) -> void:
 	var button := ""
 	if pressed & InputFrame.BLADE:
@@ -262,19 +215,22 @@ static func _record_attack_press(f: FighterState, pressed: int, cfg: Dictionary,
 		button = "pommel"
 	if button == "":
 		return
-	var inp_cfg: Dictionary = cfg["input"]
-	var notation := MotionParser.resolve(f, int(inp_cfg["motion_window_ticks"]),
-			inp_cfg.get("motions", MotionParser.MOTIONS), int(inp_cfg.get("motion_window_per_extra", 5)))
-	var id := notation + "_" + button
-	if not moves.has_move(id):
+	var inp: Dictionary = cfg["input"]
+	var r := MotionParser.resolve_click(f, str(inp.get("dash_triple", "236")), int(inp.get("dash_grace_ticks", 10)))
+	var notation: String = r["notation"]
+	var id := DASH_ID if r["kind"] == "dash" else notation + "_" + button
+	if id != DASH_ID and not moves.has_move(id):
 		notation = "5"
 		id = "5_" + button
 	f.pending_move = id
-	f.pending_input = notation
+	f.pending_input = ("dash_trail" if r["trail"] else "dash") if id == DASH_ID else notation
 	f.pending_button = button
 	f.pending_age = 0
 
 
+## Un coup confirmé part TOUT DE SUITE, quelle que soit l'action en cours (attaque, dash, garde...) :
+## il l'annule. Exceptions : quand on est sonné/en garde touchée (on attend, dans la limite du buffer),
+## et un coup ne s'annule pas dans lui-même tant qu'il n'a pas touché (évite les doubles-clics ratés).
 static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, wish: Vector3) -> void:
 	if f.pending_move == "":
 		return
@@ -282,35 +238,38 @@ static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, 
 		_clear_pending(f)
 		return
 	var next_id := f.pending_move
-	var allowed := f.action == FighterState.Action.NONE or f.action == FighterState.Action.BLOCK
+	var free_actions := [FighterState.Action.NONE, FighterState.Action.BLOCK, FighterState.Action.GUARD_SWITCH,
+			FighterState.Action.ATTACK, FighterState.Action.DASH]
+	if not free_actions.has(f.action):
+		return
+	var cancelled := f.action == FighterState.Action.ATTACK or f.action == FighterState.Action.DASH
 	if f.action == FighterState.Action.ATTACK:
+		if f.move_id == "burst":
+			return
 		var cur := moves.get_move(f.move_id)
 		if not cur.is_empty():
 			# Enchaînement (ex : Kesa-giri x3) : re-cliquer le même bouton sans direction.
 			if cur["chain_next"] != "" and f.pending_input == "5" and f.pending_button == cur["button"] \
 					and MoveSet.in_range(cur["chain_window"], f.move_tick) and moves.has_move(cur["chain_next"]):
 				next_id = cur["chain_next"]
-				allowed = true
-			# Coups annulables dans n'importe quoi (ex : la feinte).
-			elif MoveSet.in_range(cur["free_cancel"], f.move_tick):
-				allowed = true
-	var cancelled := false
-	var cc: Dictionary = cfg.get("cancel", {})
-	# Annulation au Ki : attaque pendant une attaque (moins cher si le coup a touché), ou pendant un dash.
-	# (Pas d'annulation dans le MÊME coup tant qu'il n'a pas touché : évite de gaspiller le Ki en double-cliquant.)
-	if not allowed and f.action == FighterState.Action.ATTACK and f.move_id != "burst" \
-			and f.move_tick >= int(cc.get("min_tick", 3)) and (next_id != f.move_id or f.hit_groups != 0):
-		var cost := int(cc.get("attack_on_hit", 200)) if f.hit_groups != 0 else int(cc.get("attack_from_attack", 350))
-		if spend_ki(f, cfg, cost):
-			allowed = true
-			cancelled = true
-	elif not allowed and f.action == FighterState.Action.DASH and f.action_tick >= int(cc.get("min_tick", 3)):
-		if spend_ki(f, cfg, int(cc.get("attack_from_dash", 120))):
-			allowed = true
-			cancelled = true
-	if not allowed:
-		return
+				cancelled = false
+			elif next_id == f.move_id and f.hit_groups == 0:
+				return
+	var trail := f.pending_input == "dash_trail"
 	_clear_pending(f)
+	f.dir_history.clear()   # la mémoire se vide à chaque coup confirmé
+	if next_id == DASH_ID:
+		if not f.on_ground and (not cfg["movement"].get("allow_air_dash", true) or f.air_dash_used):
+			return
+		if f.action == FighterState.Action.ATTACK:
+			end_move(f)
+		# Sens du dash : la direction ajoutée après la manip, sinon droit devant (+ Z/S tenus).
+		var dir := f.forward()
+		if trail and wish != Vector3.ZERO:
+			dir = wish
+		_start_dash(f, cfg["movement"], dir)
+		f.pending_fx = "cancel_dash" if cancelled else ""
+		return
 	start_move(f, next_id, moves, cfg, wish)
 	if cancelled:
 		f.pending_fx = "cancel_attack"
@@ -483,21 +442,6 @@ static func _try_jump(f: FighterState, mv: Dictionary, pressed: int) -> void:
 	if (pressed & InputFrame.JUMP) and f.on_ground:
 		f.vel.y = float(mv["jump_velocity"])
 		f.on_ground = false
-
-
-## Dash = Shift + direction. Se déclenche quand on appuie sur Shift en tenant
-## une direction, OU quand on appuie sur une direction en tenant Shift.
-static func _try_dash(f: FighterState, mv: Dictionary, held: int, pressed: int, wish: Vector3) -> void:
-	if f.action != FighterState.Action.NONE or f.dash_cooldown > 0:
-		return
-	if not (held & InputFrame.DASH) or wish == Vector3.ZERO:
-		return
-	var trigger := (pressed & InputFrame.DASH) != 0 or (pressed & InputFrame.DIR_MASK) != 0
-	if not trigger:
-		return
-	if not f.on_ground and (not mv.get("allow_air_dash", true) or f.air_dash_used):
-		return
-	_start_dash(f, mv, wish)
 
 
 static func _start_dash(f: FighterState, mv: Dictionary, wish: Vector3) -> void:

@@ -27,7 +27,7 @@ func add_fighter(pos: Vector3, yaw_radians: float, moves: MoveSet) -> FighterSta
 	f.max_hp = int(cfg["fighter"]["max_hp"])
 	f.hp = f.max_hp
 	f.potions_left = int(cfg.get("potion", {}).get("uses", 1))
-	f.ki = int(cfg.get("cancel", {}).get("ki_max", 1000))
+
 	fighters.append(f)
 	movesets.append(moves)
 	return f
@@ -647,4 +647,4 @@ func _training_regen() -> void:
 			f.hp = f.max_hp
 			f.burst_gauge = int(cfg["burst"]["gauge_max"])
 			f.potions_left = int(cfg.get("potion", {}).get("uses", 1))
-	f.ki = int(cfg.get("cancel", {}).get("ki_max", 1000))
+

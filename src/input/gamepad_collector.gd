@@ -2,7 +2,7 @@ class_name GamepadCollector
 extends Node
 ## Manette (joueur 2 en 1 contre 1 local). Produit les mêmes InputFrame que le clavier.
 ##  Stick gauche : déplacement (et manips 236, 623...)   Stick droit : visée
-##  RT : LAME   RB : POMMEAU   LT : garde / parry   LB : dash   A : saut   B : accroupi
+##  RT : LAME   RB : POMMEAU   LT : garde / parry   A : saut   B : accroupi   (dash = ↓↘→ + gâchette)
 ##  X : changer de garde   Y : potion   R3 : burst   Croix haut : provocation   Start : pause
 
 const DEAD := 0.18
@@ -63,7 +63,7 @@ func poll() -> InputFrame:
 			b |= InputFrame.PARRY
 		var map := {
 			JOY_BUTTON_A: InputFrame.JUMP, JOY_BUTTON_B: InputFrame.CROUCH, JOY_BUTTON_X: InputFrame.GUARD,
-			JOY_BUTTON_Y: InputFrame.POTION, JOY_BUTTON_LEFT_SHOULDER: InputFrame.DASH,
+			JOY_BUTTON_Y: InputFrame.POTION,
 			JOY_BUTTON_RIGHT_SHOULDER: InputFrame.POMMEL, JOY_BUTTON_RIGHT_STICK: InputFrame.BURST,
 			JOY_BUTTON_DPAD_UP: InputFrame.TAUNT,
 		}

@@ -17,7 +17,9 @@ var hp_fill: Array[ColorRect] = []
 var hp_text: Array[Label] = []
 var guard_fill: Array[ColorRect] = []
 var burst_fill: Array[ColorRect] = []
-var ki_fill: Array[ColorRect] = []
+var mem_boxes: Array[HBoxContainer] = []   ## mémoire de directions (par joueur humain)
+var mem_labels: Array[Label] = []
+var _mem_cache: Array = ["", ""]
 var popup_label: Label
 var popup_box: Control
 var popup_kanji: Label
@@ -181,6 +183,12 @@ func setup() -> void:
 	history_label = _make_label(18)
 	var mono := SystemFont.new()
 	mono.font_names = PackedStringArray(["Consolas", "DejaVu Sans Mono", "Menlo", "Courier New", "monospace"])
+	# Repli pour les flèches (↓↘→) si la police principale ne les a pas.
+	var sym := SystemFont.new()
+	sym.font_names = PackedStringArray(["Segoe UI Symbol", "Segoe UI", "DejaVu Sans", "Noto Sans Symbols2", "Arial Unicode MS"])
+	var fb: Array[Font] = [sym]
+	mono.fallbacks = fb
+	move_label.add_theme_font_override("font", sym)
 	history_label.add_theme_font_override("font", mono)
 	history_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	history_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -295,13 +303,6 @@ func _make_hp_bar(i: int, title: String, x_offset: float) -> void:
 	bu.size = Vector2(0, 5)
 	bg.add_child(bu)
 	burst_fill.append(bu)
-	# Ki (blanc) : se dépense pour annuler une action.
-	var kf := ColorRect.new()
-	kf.color = Color(0.85, 0.95, 1.0)
-	kf.position = Vector2(0, 38)
-	kf.size = Vector2(0, 6)
-	bg.add_child(kf)
-	ki_fill.append(kf)
 	var label := _make_label(14)
 	label.position = Vector2(6, 46)
 	bg.add_child(label)
@@ -313,9 +314,10 @@ func _make_hp_bar(i: int, title: String, x_offset: float) -> void:
 
 
 ## Noms affichés, écran partagé (2 viseurs), mode entraînement (aides debug).
-func configure(fighter_names: Array, split: bool, is_training: bool) -> void:
+func configure(fighter_names: Array, split: bool, is_training: bool, humans: int = 1) -> void:
 	names = fighter_names
 	training = is_training
+	_make_memory_display(humans, split)
 	if split:
 		crosshair.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		crosshair2 = ColorRect.new()
@@ -325,6 +327,67 @@ func configure(fighter_names: Array, split: bool, is_training: bool) -> void:
 		var vp := get_viewport().get_visible_rect().size
 		crosshair.position = Vector2(vp.x * 0.25 - 2, vp.y * 0.5 - 2)
 		crosshair2.position = Vector2(vp.x * 0.75 - 2, vp.y * 0.5 - 2)
+
+
+## Indicateur de mémoire : les 3 dernières directions + le coup qu'un clic lancerait.
+func _make_memory_display(humans: int, split: bool) -> void:
+	for k in humans:
+		var box := VBoxContainer.new()
+		box.alignment = BoxContainer.ALIGNMENT_CENTER
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		var cx := 0.0
+		if split:
+			cx = -0.25 if k == 0 else 0.25
+		box.anchor_left = 0.5 + cx
+		box.anchor_right = 0.5 + cx
+		box.offset_left = -260
+		box.offset_right = 260
+		box.offset_top = -170
+		box.offset_bottom = -95
+		add_child(box)
+		var slots := HBoxContainer.new()
+		slots.alignment = BoxContainer.ALIGNMENT_CENTER
+		slots.add_theme_constant_override("separation", 6)
+		slots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(slots)
+		var l := _make_label(15)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(l)
+		mem_boxes.append(slots)
+		mem_labels.append(l)
+
+
+func _update_memory(k: int, f: FighterState, moves: MoveSet, cfg: Dictionary) -> void:
+	var mem := MotionParser.memory(f.dir_history)
+	var phys := ""
+	for d in mem:
+		phys += str(d)
+	var key := phys + str(f.guard)
+	if key == _mem_cache[k]:
+		return
+	_mem_cache[k] = key
+	var slots := mem_boxes[k]
+	for c in slots.get_children():
+		c.queue_free()
+	for i in 3:
+		var tr := TextureRect.new()
+		tr.custom_minimum_size = Vector2(34, 34)
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tr.texture = ArrowIcons.texture(mem[i], Color(1.0, 0.95, 0.85), 34) if i < mem.size() else ArrowIcons.texture(5, Color(1, 1, 1, 0.25), 34)
+		slots.add_child(tr)
+	var nota := MotionParser.notation_of(mem, f.guard) if mem.size() == 3 else "5"
+	var txt := ""
+	if nota == str(cfg["input"].get("dash_triple", "236")):
+		txt = "clic : DASH"
+	else:
+		var bl := moves.get_move(nota + "_blade")
+		var po := moves.get_move(nota + "_pommel")
+		if bl.is_empty() and po.is_empty():
+			bl = moves.get_move("5_blade")
+			po = moves.get_move("5_pommel")
+		txt = "LAME : %s     POMMEAU : %s" % [bl.get("name", "-"), po.get("name", "-")]
+	mem_labels[k].text = txt
 
 
 ## Points de round sous forme de losanges (◆ gagné, ◇ à gagner).
@@ -348,8 +411,6 @@ func record_input(frame: InputFrame) -> void:
 		btn += "L "
 	if frame.has(InputFrame.POMMEL):
 		btn += "P "
-	if frame.has(InputFrame.DASH):
-		btn += "Dash "
 	if frame.has(InputFrame.JUMP):
 		btn += "Saut "
 	if frame.has(InputFrame.CROUCH):
@@ -434,12 +495,12 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_m
 		guard_fill[i].size.x = BAR_W * clampf(float(f.guard_gauge) / gmax, 0.0, 1.0)
 		burst_fill[i].size.x = BAR_W * clampf(float(f.burst_gauge) / bmax, 0.0, 1.0)
 		burst_fill[i].color = Color(1.0, 0.85, 0.3) if f.burst_gauge >= int(bmax) else Color(0.6, 0.45, 0.15)
-		var kmax := float(world.cfg.get("cancel", {}).get("ki_max", 1000))
-		ki_fill[i].size.x = BAR_W * clampf(float(f.ki) / kmax, 0.0, 1.0)
-		ki_fill[i].color = Color(0.85, 0.95, 1.0) if f.ki_delay == 0 else Color(0.5, 0.6, 0.7)
+
 	dummy_label.text = "Mannequin : %s   (F2 pour changer)" % dummy_mode
 	dummy_label.visible = training
 	_update_weapon_panel(p, moves)
+	for k in mem_boxes.size():
+		_update_memory(k, world.fighters[k], world.movesets[k], world.cfg)
 	potion_label.text = "Potion (R) : %d     Provocation : T" % p.potions_left
 	var d0 := world.fighters[1]
 	bind_box.visible = p.action == FighterState.Action.BIND
@@ -488,6 +549,7 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_m
 		var input: String = m["input"]
 		var phys: String = MoveSet.mirror_notation(input) if p.guard == FighterState.GUARD_LEFT else input
 		var phase := _phase(m, _shown_tick)
+		phys = MotionParser.arrows(phys)
 		move_label.text = "Coup : %s %s — %s   [%s]   tick %d/%d   (startup %d / active %d / recovery %d)" % [
 			phys, btn, m["name"], phase, _shown_tick, m["total"], m["startup"], m["active"], m["recovery"]]
 		frame_bar.set_data(m, _shown_tick if p.action == FighterState.Action.ATTACK else 0)
@@ -501,7 +563,7 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_m
 
 	var lines: PackedStringArray = ["INPUTS (numpad)"]
 	for e in _history:
-		lines.append("%2d  %d  %s" % [e["n"], e["dir"], e["btn"]])
+		lines.append("%2d  %s  %s" % [e["n"], MotionParser.arrows(str(e["dir"])), e["btn"]])
 	history_label.text = "\n".join(lines)
 
 
