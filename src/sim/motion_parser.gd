@@ -9,8 +9,9 @@ extends RefCounted
 ## L'historique stocke les directions PHYSIQUES. En garde gauche on inverse
 ## (4<->6, 1<->3) avant de chercher : les coups sont écrits pour la garde droite.
 
-## Ordre de priorité si plusieurs manips correspondent.
-const MOTIONS := ["623", "236", "214", "22", "44", "66"]
+## Ordre de priorité si plusieurs manips correspondent (remplaçable dans combat.json > input > motions).
+## Minimum 3 directions : quarts de cercle (236, 214), DP (623, 421), demi-cercles (41236, 63214).
+const MOTIONS := ["63214", "41236", "623", "421", "236", "214"]
 const MAX_HISTORY := 24
 
 
@@ -54,22 +55,16 @@ static func record(f: FighterState, held: int) -> void:
 
 
 ## Renvoie la notation reconnue ("236", "6", "5"...) au moment du clic.
-static func resolve(f: FighterState, window: int) -> String:
+## window = fenêtre pour 3 directions ; extra = ticks en plus par direction supplémentaire.
+static func resolve(f: FighterState, window: int, motions: Array = MOTIONS, extra: int = 5) -> String:
 	var now := f.local_tick
 	var guard_left := f.guard == FighterState.GUARD_LEFT
 	# On garde les entrées encore "vivantes" dans la fenêtre.
-	var dirs: Array[int] = []
-	var n := f.dir_history.size()
-	for i in n:
-		var end_tick: int = now if i == n - 1 else int(f.dir_history[i + 1][1])
-		if end_tick < now - window:
-			continue
-		var d: int = int(f.dir_history[i][0])
-		dirs.append(mirror_dir(d) if guard_left else d)
-
-	for m in MOTIONS:
-		if _match(m, dirs):
-			return m
+	for m in motions:
+		var seq := str(m)
+		var w := window + extra * maxi(seq.length() - 3, 0)
+		if _match(seq, _dirs_in_window(f, now, w, guard_left)):
+			return seq
 
 	var held := f.last_dir
 	if guard_left:
@@ -81,6 +76,18 @@ static func resolve(f: FighterState, window: int) -> String:
 	if held == 6:
 		return "6"
 	return "5"
+
+
+static func _dirs_in_window(f: FighterState, now: int, window: int, guard_left: bool) -> Array[int]:
+	var dirs: Array[int] = []
+	var n := f.dir_history.size()
+	for i in n:
+		var end_tick: int = now if i == n - 1 else int(f.dir_history[i + 1][1])
+		if end_tick < now - window:
+			continue
+		var d: int = int(f.dir_history[i][0])
+		dirs.append(mirror_dir(d) if guard_left else d)
+	return dirs
 
 
 ## Cherche la séquence dans l'ordre (en partant de la plus récente).

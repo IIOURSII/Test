@@ -34,9 +34,9 @@ FPS de mêlée « Japon médiéval fantasy ». Phase 1 en cours.
 
 ## Le Katana — « La Voie du sabre »
 
-- **Posture Iai** (22 LAME maintenu) : reste rengainé pour charger, relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture.
+- **Posture Iai** (421 LAME maintenu) : reste rengainé pour charger, relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture.
 - **Zanshin 残心** (3 points) : gagné par parry, counter-hit, punish et contre en posture ; perdu quand on se fait counter. 1 point : **A** pendant un coup qui a touché/été bloqué = annule sa recovery (et change de garde). 3 points : relâcher le Iai = **Issen 一閃**.
-- **Tranchant 刃** : la lame s'émousse (et se tache) quand elle est bloquée ou parée ; le **Chiburi** (44 LAME) la nettoie.
+- **Tranchant 刃** : la lame s'émousse (et se tache) quand elle est bloquée ou parée ; le **Chiburi** (63214 LAME) la nettoie.
 
 Réglages : `data/weapons/katana.json` > `mechanic` ; couleurs : `style`.
 

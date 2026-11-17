@@ -82,7 +82,7 @@ func _process(delta: float) -> void:
 	_angle += delta * ORBIT_SPEED
 	if _map:
 		var r := (_map.radius if _map.bounds_type == "circle" else maxf(_map.half.x, _map.half.y)) * 0.85
-		r = clampf(r, 8.0, 14.0)
+		r = clampf(r, 9.0, 20.0)
 		camera.position = Vector3(cos(_angle) * r, 3.2 + sin(_time * 0.3) * 0.3, sin(_angle) * r)
 		camera.look_at(Vector3(0, 1.2, 0), Vector3.UP)
 		if _view:

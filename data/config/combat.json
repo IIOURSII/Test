@@ -9,18 +9,20 @@
     "crouch_eye_height": 1.0
   },
   "movement": {
-    "walk_speed": 3.8,
-    "crouch_speed": 1.8,
-    "ground_accel": 30.0,
-    "air_accel": 9.0,
-    "jump_velocity": 7.0,
-    "gravity": 22.0,
-    "dash_speed": 14.0,
-    "dash_ticks": 9,
-    "dash_slowdown_ticks": 3,
+    "walk_speed": 3.0,
+    "crouch_speed": 1.5,
+    "ground_accel": 24.0,
+    "air_accel": 7.0,
+    "jump_velocity": 6.8,
+    "gravity": 21.0,
+    "dash_speed": 15.0,
+    "dash_ticks": 11,
+    "dash_slowdown_ticks": 4,
     "dash_end_speed_ratio": 0.3,
-    "dash_cooldown_ticks": 18,
-    "allow_air_dash": true
+    "dash_cooldown_ticks": 20,
+    "allow_air_dash": true,
+    "dash_recovery_ticks": 6,
+    "_aide_dash": "dash_recovery_ticks = ticks de récupération après un dash (on ne peut ni attaquer ni redasher) : dasher est un engagement."
   },
   "attack": {
     "_aide": "Inertie pendant les attaques. momentum_carry = part de ta vitesse gardée au début d'un coup (0 = arrêt net, 1 = tout gardé). damping = vitesse à laquelle cet élan s'amortit. friction = freinage restant. steer_ratio = part du déplacement ZQSD encore possible pendant le startup/recovery (0 = aucun). segment_accel = vitesse à laquelle les pas/dashs des coups atteignent leur vitesse (plus haut = plus sec).",
@@ -33,7 +35,7 @@
   "guard": {
     "_aide": "GARDE (maintenir E) et PARRY (appuyer sur E juste avant l'impact). angle_deg = la garde ne protège que de face. parry_window = durée (ticks) du parry après l'appui ; parry_lockout = délai avant de pouvoir retenter (anti-spam). Le POMMEAU brise la garde. Les coups 'overhead' doivent être bloqués debout, les coups 'low' accroupi. guard_* = jauge de garde : bloquer la remplit, pleine = garde brisée (crush).",
     "angle_deg": 80.0,
-    "walk_speed": 2.0,
+    "walk_speed": 1.6,
     "blockstun_ratio": 0.65,
     "min_blockstun": 6,
     "pushback": 2.5,
@@ -109,9 +111,18 @@
     "_aide": "Taille utilisée par le terrain d'entraînement. Les autres maps ont leurs propres dimensions (data/maps/)."
   },
   "input": {
-    "motion_window_ticks": 14,
+    "motion_window_ticks": 16,
     "button_buffer_ticks": 6,
-    "_aide_input": "motion_window = temps max (ticks) pour faire une manip type 236 avant le clic. button_buffer = un clic fait pendant un coup est gardé en mémoire ce nombre de ticks."
+    "_aide_input": "motions = manips reconnues, par ordre de priorité (minimum 3 directions). motion_window_ticks = temps max pour une manip de 3 directions, + motion_window_per_extra par direction en plus (demi-cercles). button_buffer = un clic fait pendant un coup est gardé en mémoire ce nombre de ticks.",
+    "motion_window_per_extra": 5,
+    "motions": [
+      "63214",
+      "41236",
+      "623",
+      "421",
+      "236",
+      "214"
+    ]
   },
   "aim_assist": {
     "angle_deg": 20.0,

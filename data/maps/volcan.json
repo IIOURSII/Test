@@ -1,15 +1,72 @@
 {
-  "name": "Cœur du Volcan", "subtitle": "Terre de feu", "kanji": "炎", "theme": "volcan",
+  "name": "Cœur du Volcan",
+  "subtitle": "Terre de feu",
+  "kanji": "炎",
+  "theme": "volcan",
   "desc": "Deux bassins de lave brûlent quiconque s'y tient : y repousser l'adversaire paie. Quatre geysers grondent avant d'entrer en éruption, en alternance : lis le rythme et pousse l'adversaire au bon endroit au bon moment.",
-  "bounds": {"type": "circle", "radius": 12},
-  "spawn_distance": 5,
+  "bounds": {
+    "type": "circle",
+    "radius": 18
+  },
+  "spawn_distance": 7,
   "obstacles": [],
   "zones": [
-    {"type": "lava", "shape": "circle", "pos": [6.5, 0, 0], "radius": 1.8, "damage": 6, "interval": 6}
+    {
+      "type": "lava",
+      "shape": "circle",
+      "pos": [
+        9.5,
+        0,
+        0
+      ],
+      "radius": 2.5,
+      "damage": 6,
+      "interval": 6
+    }
   ],
   "geysers": [
-    {"pos": [3.2, 0, 3.2], "radius": 1.3, "period": 420, "offset": 0, "warn": 80, "active": 22, "damage": 80, "launch": 9.0},
-    {"pos": [3.2, 0, -3.2], "radius": 1.3, "period": 420, "offset": 210, "warn": 80, "active": 22, "damage": 80, "launch": 9.0}
+    {
+      "pos": [
+        4.8,
+        0,
+        4.8
+      ],
+      "radius": 1.5,
+      "period": 420,
+      "offset": 0,
+      "warn": 80,
+      "active": 22,
+      "damage": 80,
+      "launch": 9.0
+    },
+    {
+      "pos": [
+        4.8,
+        0,
+        -4.8
+      ],
+      "radius": 1.5,
+      "period": 420,
+      "offset": 210,
+      "warn": 80,
+      "active": 22,
+      "damage": 80,
+      "launch": 9.0
+    },
+    {
+      "pos": [
+        0,
+        0,
+        12
+      ],
+      "radius": 1.5,
+      "period": 540,
+      "offset": 120,
+      "warn": 80,
+      "active": 22,
+      "damage": 80,
+      "launch": 9.0
+    }
   ],
   "visual": {}
 }

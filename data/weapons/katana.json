@@ -3,7 +3,7 @@
   "weapon": "Katana",
   "mechanic": {
     "type": "katana",
-    "_aide": "LA VOIE DU SABRE. Zanshin : points gagnés en lisant l'adversaire (parry, counter-hit, punish, contre en posture), perdus quand on se fait counter. cancel_cost = points pour annuler la recovery d'un coup qui a touché/été bloqué (touche A). Issen = Iai relâché avec issen_cost points. Tranchant (edge) : 100 = affûté ; baisse quand on touche/est bloqué/est paré ; le Chiburi (44 LAME) le restaure. Posture : 22 LAME maintenu = posture Iai (charge + contre automatique sur les attaques LAME de face).",
+    "_aide": "LA VOIE DU SABRE. Zanshin : points gagnés en lisant l'adversaire (parry, counter-hit, punish, contre en posture), perdus quand on se fait counter. cancel_cost = points pour annuler la recovery d'un coup qui a touché/été bloqué (touche A). Issen = Iai relâché avec issen_cost points. Tranchant (edge) : 100 = affûté ; baisse quand on touche/est bloqué/est paré ; le Chiburi (63214 LAME) le restaure. Posture : 421 LAME maintenu = posture Iai (charge + contre automatique sur les attaques LAME de face).",
     "zanshin_max": 3,
     "cancel_cost": 1,
     "issen_cost": 3,
@@ -20,7 +20,7 @@
     "stance_counter_stun": 32,
     "stance_counter_hitstop": 18
   },
-  "mechanic_desc": "[b]LA VOIE DU SABRE[/b] — [b]Posture Iai[/b] : 22 LAME, garde le clic enfoncé pour rester rengainé (charge), relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture. [b]Zanshin 残心[/b] (3 points max) : gagné par parry, counter-hit, punish et contre en posture ; perdu si on se fait counter. 1 point : appuie sur A pendant un coup qui a touché ou été bloqué pour annuler sa recovery (et changer de garde). 3 points : relâcher le Iai déclenche [b]Issen 一閃[/b], coupe éclair traversante qui brise la garde (seul un parry l'arrête). [b]Tranchant 刃[/b] : la lame s'émousse et se tache quand elle est bloquée ou parée (moins de dégâts) ; le Chiburi (44 LAME) la nettoie.",
+  "mechanic_desc": "[b]LA VOIE DU SABRE[/b] — [b]Posture Iai[/b] : 421 LAME, garde le clic enfoncé pour rester rengainé (charge), relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture. [b]Zanshin 残心[/b] (3 points max) : gagné par parry, counter-hit, punish et contre en posture ; perdu si on se fait counter. 1 point : appuie sur A pendant un coup qui a touché ou été bloqué pour annuler sa recovery (et changer de garde). 3 points : relâcher le Iai déclenche [b]Issen 一閃[/b], coupe éclair traversante qui brise la garde (seul un parry l'arrête). [b]Tranchant 刃[/b] : la lame s'émousse et se tache quand elle est bloquée ou parée (moins de dégâts) ; le Chiburi (63214 LAME) la nettoie.",
   "style": {
     "_aide": "Identité visuelle de l'arme (couleurs RVB 0..1).",
     "slash_core": [
@@ -442,9 +442,9 @@
       ],
       "hitboxes": []
     },
-    "22_blade": {
+    "421_blade": {
       "name": "Iai",
-      "input": "22",
+      "input": "421",
       "button": "blade",
       "desc": "POSTURE IAI : rengaine, maintiens le clic pour rester en posture (charge + contre automatique contre les attaques LAME de face), relâche pour dégainer. Avec 3 Zanshin : Issen.",
       "anim": "iai",
@@ -479,9 +479,9 @@
       ],
       "stance": true
     },
-    "22_pommel": {
+    "421_pommel": {
       "name": "Kyo-iai (feinte)",
-      "input": "22",
+      "input": "421",
       "button": "pommel",
       "desc": "Fausse dégaine : annulable à tout moment dans n'importe quel coup. Fait croire à la posture Iai.",
       "anim": "feint",
@@ -659,9 +659,9 @@
         }
       ]
     },
-    "66_blade": {
+    "41236_blade": {
       "name": "Ressen",
-      "input": "66",
+      "input": "41236",
       "button": "blade",
       "desc": "Saut en avant + coupe plongeante (overhead).",
       "anim": "down",
@@ -699,9 +699,9 @@
         "overhead"
       ]
     },
-    "66_pommel": {
+    "41236_pommel": {
       "name": "Hiza-geri",
-      "input": "66",
+      "input": "41236",
       "button": "pommel",
       "desc": "Course + genou volant.",
       "anim": "brace",
@@ -811,9 +811,9 @@
         }
       ]
     },
-    "44_blade": {
+    "63214_blade": {
       "name": "Chiburi (troll)",
-      "input": "44",
+      "input": "63214",
       "button": "blade",
       "desc": "Secoue la lame : nettoie le sang, restaure le Tranchant à 100 %, et éclabousse l'écran adverse.",
       "anim": "flick",
@@ -843,9 +843,9 @@
       ],
       "restore_edge": true
     },
-    "44_pommel": {
+    "63214_pommel": {
       "name": "Nōtō (troll)",
-      "input": "44",
+      "input": "63214",
       "button": "pommel",
       "desc": "Rengaine lentement et TOURNE LE DOS. Toute attaque pendant les premiers ticks déclenche un contre dévastateur (même dans le dos) ; après, tu es vulnérable.",
       "anim": "sheathe",

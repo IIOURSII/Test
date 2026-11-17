@@ -1,13 +1,70 @@
 {
-  "name": "Dust Creek", "subtitle": "Duel à midi", "kanji": "荒", "theme": "western",
+  "name": "Dust Creek",
+  "subtitle": "Duel à midi",
+  "kanji": "荒",
+  "theme": "western",
   "desc": "Rue étroite : peu de place pour esquiver sur les côtés, tout se joue sur la distance. Les abreuvoirs se sautent ou servent de bouclier, le puits central casse la ligne droite.",
-  "bounds": {"type": "rect", "half_x": 6, "half_z": 16},
-  "spawn_distance": 7,
+  "bounds": {
+    "type": "rect",
+    "half_x": 6,
+    "half_z": 24
+  },
+  "spawn_distance": 10,
   "obstacles": [
-    {"pos": [0, 0, 0], "size": [1.7, 1.1, 1.7], "look": "well"},
-    {"pos": [3.6, 0, 4.2], "size": [1.0, 0.7, 2.6], "look": "trough"},
-    {"pos": [-3.6, 0, 10], "size": [1.3, 1.1, 1.3], "look": "barrels"}
+    {
+      "pos": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1.8,
+        1.1,
+        1.8
+      ],
+      "look": "well"
+    },
+    {
+      "pos": [
+        3.6,
+        0,
+        6.0
+      ],
+      "size": [
+        1.0,
+        0.7,
+        2.8
+      ],
+      "look": "trough"
+    },
+    {
+      "pos": [
+        -3.6,
+        0,
+        14
+      ],
+      "size": [
+        1.3,
+        1.1,
+        1.3
+      ],
+      "look": "barrels"
+    },
+    {
+      "pos": [
+        3.4,
+        0,
+        19
+      ],
+      "size": [
+        1.0,
+        0.7,
+        2.8
+      ],
+      "look": "trough"
+    }
   ],
-  "zones": [], "geysers": [],
+  "zones": [],
+  "geysers": [],
   "visual": {}
 }

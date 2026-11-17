@@ -1,15 +1,71 @@
 {
-  "name": "Salle du Trésor", "subtitle": "Sous la Montagne", "kanji": "金", "theme": "banque",
+  "name": "Salle du Trésor",
+  "subtitle": "Sous la Montagne",
+  "kanji": "金",
+  "theme": "banque",
   "desc": "Une rivière de pièces d'or traverse la salle : on y glisse (dashs plus longs, reculs plus forts, freinage difficile). Les tas d'or se sautent. Les colonnes naines arrêtent net les grandes lames.",
-  "bounds": {"type": "rect", "half_x": 14, "half_z": 14},
-  "spawn_distance": 6,
+  "bounds": {
+    "type": "rect",
+    "half_x": 20,
+    "half_z": 20
+  },
+  "spawn_distance": 8.5,
   "obstacles": [
-    {"pos": [7.5, 0, 0], "size": [2.6, 0.6, 2.6], "look": "gold_pile", "bounce": false},
-    {"pos": [4.5, 0, 7.5], "size": [1.7, 7.0, 1.7], "look": "dwarf_pillar"},
-    {"pos": [-4.5, 0, 7.5], "size": [1.7, 7.0, 1.7], "look": "dwarf_pillar"}
+    {
+      "pos": [
+        11,
+        0,
+        0
+      ],
+      "size": [
+        3.4,
+        0.6,
+        3.4
+      ],
+      "look": "gold_pile",
+      "bounce": false
+    },
+    {
+      "pos": [
+        6.5,
+        0,
+        11
+      ],
+      "size": [
+        2.0,
+        8.0,
+        2.0
+      ],
+      "look": "dwarf_pillar"
+    },
+    {
+      "pos": [
+        -6.5,
+        0,
+        11
+      ],
+      "size": [
+        2.0,
+        8.0,
+        2.0
+      ],
+      "look": "dwarf_pillar"
+    }
   ],
   "zones": [
-    {"type": "slippery", "shape": "rect", "pos": [0, 0, 0], "half_x": 14, "half_z": 2.2, "friction": 0.22, "mirror": false}
+    {
+      "type": "slippery",
+      "shape": "rect",
+      "pos": [
+        0,
+        0,
+        0
+      ],
+      "half_x": 20,
+      "half_z": 3.2,
+      "friction": 0.22,
+      "mirror": false
+    }
   ],
   "geysers": [],
   "visual": {}

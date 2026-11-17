@@ -455,9 +455,9 @@ static func _decor_chateau(p: Node3D, map: MapData) -> void:
 	for s in [-1.0, 1.0]:
 		_add(p, MeshUtil.box(Vector3(1.6, 2.6, 0.8), Color(0.7, 0.55, 0.2)), Vector3(0, 1.3, s * (map.half.y + 0.2)))
 		for k in 3:
-			var z := -8.0 + k * 8.0
+			var z := (-0.55 + k * 0.55) * map.half.y
 			_add(p, MeshUtil.box(Vector3(0.1, 3.0, 1.2), Color(0.35, 0.5, 0.9), 1.5), Vector3(s * (map.half.x + 0.45), 5.0, z))
-	for z in [-9.0, 0.0, 9.0]:
+	for z in [-0.6 * map.half.y, 0.0, 0.6 * map.half.y]:
 		var ring := MeshUtil.cylinder(1.2, 0.15, Color(0.25, 0.2, 0.15))
 		_add(p, ring, Vector3(0, 6.5, z))
 		for k in 6:

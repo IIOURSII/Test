@@ -214,8 +214,9 @@ static func _record_attack_press(f: FighterState, pressed: int, cfg: Dictionary,
 		button = "pommel"
 	if button == "":
 		return
-	var window := int(cfg["input"]["motion_window_ticks"])
-	var notation := MotionParser.resolve(f, window)
+	var inp_cfg: Dictionary = cfg["input"]
+	var notation := MotionParser.resolve(f, int(inp_cfg["motion_window_ticks"]),
+			inp_cfg.get("motions", MotionParser.MOTIONS), int(inp_cfg.get("motion_window_per_extra", 5)))
 	var id := notation + "_" + button
 	if not moves.has_move(id):
 		notation = "5"
@@ -451,8 +452,12 @@ static func _step_dash(f: FighterState, mv: Dictionary) -> void:
 	if t > total - slow:
 		var k := float(t - (total - slow)) / float(maxi(slow, 1))
 		s = lerpf(speed, end_speed, k)
+	var rec := int(mv.get("dash_recovery_ticks", 0))
+	if t > total:
+		# Récupération : on freine, impossible d'agir (le dash engage).
+		s = end_speed * (1.0 - float(t - total) / float(maxi(rec, 1)))
 	f.vel = f.dash_dir * s  # vel.y = 0 : le dash aérien "suspend" la gravité
-	if t >= total:
+	if t >= total + rec:
 		f.action = FighterState.Action.NONE
 		f.action_tick = 0
 		f.dash_cooldown = int(mv["dash_cooldown_ticks"])

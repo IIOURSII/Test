@@ -168,7 +168,7 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 	var eye := lerpf(float(fcfg["eye_height"]), float(fcfg["crouch_eye_height"]), crouch_t)
 
 	position = p + Vector3(0, eye, 0)
-	# Contre dos tourné (44 POMMEAU) : on se retourne vraiment (la vue fait un demi-tour).
+	# Contre dos tourné (63214 POMMEAU) : on se retourne vraiment (la vue fait un demi-tour).
 	var turn_target := 0.0
 	if cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id) and moves.get_move(cur.move_id)["turn_back"]:
 		turn_target = PI
