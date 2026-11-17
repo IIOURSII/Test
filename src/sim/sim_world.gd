@@ -791,5 +791,4 @@ func _training_regen() -> void:
 			f.hp = f.max_hp
 			f.burst_gauge = int(cfg["burst"]["gauge_max"])
 			f.potions_left = int(cfg.get("potion", {}).get("uses", 1))
-	WeaponMechanics.init(f, moves)
 
