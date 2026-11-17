@@ -25,6 +25,9 @@ func setup() -> void:
 	_streams["shing"] = _shing(0.45)
 	_streams["clang"] = _shing(0.3, 0.62)
 	_streams["parry"] = _shing(0.9, 0.85)
+	_streams["ring"] = _shing(0.7, 1.3)       # "tchin" du katana qui résonne
+	_streams["chin"] = _shing(0.25, 1.6)      # gain de Zanshin
+	_streams["click"] = _click()              # lame qui se rengaine
 	for i in VOICES:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
@@ -122,6 +125,24 @@ func _shing(dur: float, pitch: float = 1.0) -> AudioStreamWAV:
 		var scrape := (x - hp) * exp(-t * 30.0)
 		out[i] = s * 0.5 + scrape * 0.5
 	return _to_wav(out, 0.5)
+
+
+## Clic sec de la lame qui rentre dans le fourreau.
+func _click() -> AudioStreamWAV:
+	var n := int(0.09 * SR)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var phase := 0.0
+	for i in n:
+		var t := float(i) / SR
+		phase += TAU * 3300.0 / SR
+		var tone := sin(phase) * exp(-t * 70.0)
+		var noise := _rng.randf_range(-1.0, 1.0) * exp(-t * 400.0)
+		var tick2 := 0.0
+		if t > 0.035:
+			tick2 = _rng.randf_range(-1.0, 1.0) * exp(-(t - 0.035) * 500.0) * 0.7
+		out[i] = tone * 0.6 + noise * 0.8 + tick2
+	return _to_wav(out, 0.7)
 
 
 static func _to_wav(samples: PackedFloat32Array, peak_target: float) -> AudioStreamWAV:

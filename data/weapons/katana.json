@@ -1,6 +1,65 @@
 {
   "_aide": "Frame data du KATANA. Les inputs sont écrits en GARDE DROITE (le jeu les inverse en garde gauche). Durées en ticks (60 = 1 s). startup = ticks avant que la hitbox apparaisse ; active = ticks où elle peut toucher ; recovery = ticks de récupération après. Hitbox : [côté, hauteur, avant] en mètres depuis les pieds du perso (côté positif = côté de l'arme). movement : vitesses en m/s pendant certains ticks (forward = avant, side = côté de l'arme, up = impulsion vers le haut). F6 en jeu = recharger.",
   "weapon": "Katana",
+  "mechanic": {
+    "type": "katana",
+    "_aide": "LA VOIE DU SABRE. Zanshin : points gagnés en lisant l'adversaire (parry, counter-hit, punish, contre en posture), perdus quand on se fait counter. cancel_cost = points pour annuler la recovery d'un coup qui a touché/été bloqué (touche A). Issen = Iai relâché avec issen_cost points. Tranchant (edge) : 100 = affûté ; baisse quand on touche/est bloqué/est paré ; le Chiburi (44 LAME) le restaure. Posture : 22 LAME maintenu = posture Iai (charge + contre automatique sur les attaques LAME de face).",
+    "zanshin_max": 3,
+    "cancel_cost": 1,
+    "issen_cost": 3,
+    "issen_damage_mult": 2.2,
+    "issen_speed": 24.0,
+    "edge_loss_hit": 3,
+    "edge_loss_block": 10,
+    "edge_loss_parried": 15,
+    "edge_min_mult": 0.7,
+    "edge_max_mult": 1.15,
+    "stance_max_ticks": 90,
+    "charge_max_bonus": 1.0,
+    "stance_counter_damage": 130,
+    "stance_counter_stun": 32,
+    "stance_counter_hitstop": 18
+  },
+  "mechanic_desc": "[b]LA VOIE DU SABRE[/b] — [b]Posture Iai[/b] : 22 LAME, garde le clic enfoncé pour rester rengainé (charge), relâche pour dégainer. En posture, une attaque LAME de face déclenche un contre automatique ; le POMMEAU adverse casse la posture. [b]Zanshin 残心[/b] (3 points max) : gagné par parry, counter-hit, punish et contre en posture ; perdu si on se fait counter. 1 point : appuie sur A pendant un coup qui a touché ou été bloqué pour annuler sa recovery (et changer de garde). 3 points : relâcher le Iai déclenche [b]Issen 一閃[/b], coupe éclair traversante qui brise la garde (seul un parry l'arrête). [b]Tranchant 刃[/b] : la lame s'émousse et se tache quand elle est bloquée ou parée (moins de dégâts) ; le Chiburi (44 LAME) la nettoie.",
+  "style": {
+    "_aide": "Identité visuelle de l'arme (couleurs RVB 0..1).",
+    "slash_core": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "slash_edge": [
+      0.85,
+      0.06,
+      0.12
+    ],
+    "slash_ink": [
+      0.03,
+      0.0,
+      0.02
+    ],
+    "trail": [
+      0.92,
+      0.95,
+      1.0
+    ],
+    "aura": [
+      0.95,
+      0.08,
+      0.1
+    ],
+    "spark": [
+      1.0,
+      0.85,
+      0.6
+    ],
+    "kanji_color": [
+      0.85,
+      0.08,
+      0.1
+    ],
+    "metal_ring": true
+  },
   "moves": {
     "5_blade": {
       "name": "Kesa-giri",
@@ -387,11 +446,11 @@
       "name": "Iai",
       "input": "22",
       "button": "blade",
-      "desc": "Rengaine puis dégaine éclair. (Charge en maintenant le clic : étape 3.)",
+      "desc": "POSTURE IAI : rengaine, maintiens le clic pour rester en posture (charge + contre automatique contre les attaques LAME de face), relâche pour dégainer. Avec 3 Zanshin : Issen.",
       "anim": "iai",
-      "startup": 18,
+      "startup": 10,
       "active": 3,
-      "recovery": 20,
+      "recovery": 22,
       "damage": 150,
       "hitstun": 26,
       "hitstop": 16,
@@ -417,13 +476,14 @@
           ],
           "radius": 0.13
         }
-      ]
+      ],
+      "stance": true
     },
     "22_pommel": {
       "name": "Kyo-iai (feinte)",
       "input": "22",
       "button": "pommel",
-      "desc": "Fausse dégaine, annulable à tout moment dans n'importe quel coup.",
+      "desc": "Fausse dégaine : annulable à tout moment dans n'importe quel coup. Fait croire à la posture Iai.",
       "anim": "feint",
       "startup": 12,
       "active": 0,
@@ -755,7 +815,7 @@
       "name": "Chiburi (troll)",
       "input": "44",
       "button": "blade",
-      "desc": "Secoue la lame : du « sang » tache l'écran adverse. (Tache sur l'écran : étape 3.)",
+      "desc": "Secoue la lame : nettoie le sang, restaure le Tranchant à 100 %, et éclabousse l'écran adverse.",
       "anim": "flick",
       "startup": 16,
       "active": 2,
@@ -780,7 +840,8 @@
       ],
       "tags": [
         "splash"
-      ]
+      ],
+      "restore_edge": true
     },
     "44_pommel": {
       "name": "Nōtō (troll)",

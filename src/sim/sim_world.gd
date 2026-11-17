@@ -84,6 +84,10 @@ func active_hitboxes(i: int) -> Array:
 func _emit_action_events() -> void:
 	for i in fighters.size():
 		var f := fighters[i]
+		if f.pending_fx != "":
+			events.append({"type": f.pending_fx, "fighter": i, "pos": f.pos + Vector3(0, 1.2, 0),
+					"pips": f.weapon_pips, "charge": f.charge_ticks})
+			f.pending_fx = ""
 		if f.hitstop > 0:
 			continue
 		if f.action == FighterState.Action.DASH and f.action_tick == 0:
@@ -178,9 +182,16 @@ func _resolve_contact(i: int, j: int, hb: Dictionary, capsule: Array) -> void:
 		fwd = fwd.normalized() if fwd.length() > 0.01 else att.forward()
 	else:
 		fwd = Combat.attack_frame(att, def, cfg)[0]
+	var tags: Array = m.get("tags", [])
 	var info := {"pos": _impact_point(def, capsule), "dir": fwd, "button": button,
-			"anim": str(m.get("anim", "")), "guard": att.guard}
+			"anim": str(m.get("anim", "")), "guard": att.guard,
+			"splash": tags.has("splash"), "issen": att.issen}
 	var faces := _faces(def, att)
+
+	# 0) Posture Iai : une attaque LAME de face déclenche le contre automatique.
+	if def.in_stance and faces and button != "pommel":
+		_stance_counter(def, att, j, i, info)
+		return
 
 	# 1) Parry parfait : appui sur E juste avant l'impact.
 	if def.can_defend() and faces and def.parry_timer > 0:
@@ -192,7 +203,9 @@ func _resolve_contact(i: int, j: int, hb: Dictionary, capsule: Array) -> void:
 		if button == "pommel":
 			_guard_break(att, def, i, j, hb, fwd, info)
 			return
-		var tags: Array = m.get("tags", [])
+		if att.issen:
+			# Issen brise la garde : seul un parry l'arrête.
+			def.guard_gauge = int(cfg["guard"]["guard_max"])
 		var wrong_height := (tags.has("overhead") and def.is_crouching()) or (tags.has("low") and not def.is_crouching())
 		if not wrong_height:
 			_block(att, def, i, j, hb, fwd, info)
@@ -202,8 +215,40 @@ func _resolve_contact(i: int, j: int, hb: Dictionary, capsule: Array) -> void:
 	_hit(att, def, i, j, hb, m, fwd, info)
 
 
+## Contre automatique depuis la posture Iai : on dégaine et on frappe l'attaquant.
+func _stance_counter(def: FighterState, att: FighterState, d_i: int, a_i: int, info: Dictionary) -> void:
+	var ms := movesets[d_i]
+	var m := ms.get_move(def.move_id)
+	var dmg := roundi(float(ms.mech("stance_counter_damage", 120)) * KatanaMechanic.damage_mult(def, ms, m))
+	var stun := int(ms.mech("stance_counter_stun", 30))
+	var stop := int(ms.mech("stance_counter_hitstop", 16))
+	def.in_stance = false
+	def.move_tick = int(m["startup"]) + int(m["active"])   # on passe directement à la fin de la dégaine
+	var fwd := def.forward()
+	if att.action == FighterState.Action.ATTACK:
+		FighterLogic.end_move(att)
+	_reset_combo_if_fresh(att)
+	att.action = FighterState.Action.HITSTUN
+	att.hitstun = stun
+	att.hp = maxi(att.hp - dmg, 0)
+	att.ticks_since_hit = 0
+	att.vel.x = fwd.x * 6.0
+	att.vel.z = fwd.z * 6.0
+	att.combo_hits += 1
+	att.combo_damage += dmg
+	att.hitstop = stop
+	def.hitstop = stop
+	KatanaMechanic.gain_zanshin(def, ms)
+	info.merge({"type": "iai_counter", "attacker": d_i, "defender": a_i, "hitstop": stop,
+			"damage": dmg, "pos": att.pos + Vector3(0, 1.2, 0), "dir": fwd, "guard": def.guard})
+	events.append(info)
+
+
 func _parry(att: FighterState, def: FighterState, i: int, j: int, fwd: Vector3, info: Dictionary) -> void:
 	var gd: Dictionary = cfg["guard"]
+	KatanaMechanic.lose_edge(att, movesets[i], "edge_loss_parried")
+	KatanaMechanic.gain_zanshin(def, movesets[j])
+	att.issen = false
 	FighterLogic.end_move(att)
 	att.action = FighterState.Action.PARRIED
 	att.hitstun = int(gd["parry_stun"])
@@ -239,6 +284,8 @@ func _guard_break(att: FighterState, def: FighterState, i: int, j: int, hb: Dict
 
 func _block(att: FighterState, def: FighterState, i: int, j: int, hb: Dictionary, fwd: Vector3, info: Dictionary) -> void:
 	var gd: Dictionary = cfg["guard"]
+	if info["button"] == "blade":
+		KatanaMechanic.lose_edge(att, movesets[i], "edge_loss_block")
 	var stun := maxi(int(gd["min_blockstun"]), roundi(float(hb["hitstun"]) * float(gd["blockstun_ratio"])))
 	def.action = FighterState.Action.BLOCKSTUN
 	def.hitstun = stun
@@ -282,7 +329,15 @@ func _hit(att: FighterState, def: FighterState, i: int, j: int, hb: Dictionary, 
 	var stun_mult := maxf(float(co["min_hitstun"]), 1.0 - float(co["hitstun_decay"]) * n)
 	if counter:
 		dmg_mult *= float(cc["damage_mult"])
+	dmg_mult *= KatanaMechanic.damage_mult(att, movesets[i], m)
 	var dmg := roundi(float(hb["damage"]) * dmg_mult)
+	# Voie du sabre : lire l'adversaire donne du Zanshin, se faire lire en coûte.
+	if counter or punish:
+		KatanaMechanic.gain_zanshin(att, movesets[i])
+	if counter:
+		def.weapon_pips = maxi(def.weapon_pips - 1, 0) if KatanaMechanic.is_katana(movesets[j]) else def.weapon_pips
+	if m.get("button", "") == "blade":
+		KatanaMechanic.lose_edge(att, movesets[i], "edge_loss_hit")
 	var stun := int(hb["hitstun"])
 	if stun > 0:
 		stun = maxi(1, roundi(float(stun) * stun_mult) + (int(cc["hitstun_bonus"]) if counter else 0))
@@ -315,7 +370,7 @@ func _hit(att: FighterState, def: FighterState, i: int, j: int, hb: Dictionary, 
 
 	info.merge({
 		"type": "hit", "attacker": i, "defender": j,
-		"damage": dmg, "hitstop": stop, "heavy": stop >= 12,
+		"damage": dmg, "hitstop": stop, "heavy": stop >= 12 or att.issen,
 		"counter": counter, "punish": punish, "combo": def.combo_hits,
 	})
 	events.append(info)

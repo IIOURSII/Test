@@ -26,6 +26,8 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 		_try_parry_press(f, gd)
 	if pressed & InputFrame.BURST:
 		f.burst_buffer = 8
+	if (pressed & InputFrame.GUARD) and f.action == FighterState.Action.ATTACK:
+		f.cancel_buffer = 8
 	f.prev_buttons = held
 
 	if f.hitstop > 0:
@@ -44,8 +46,14 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 
 	var wish := wish_dir(f, held)
 
+	# Mécanique du katana : annuler la recovery avec le Zanshin (touche A).
+	if f.cancel_buffer > 0 and f.action == FighterState.Action.ATTACK:
+		if KatanaMechanic.try_cancel(f, moves):
+			f.cancel_buffer = 0
+			pressed &= ~InputFrame.GUARD   # ne déclenche pas en plus un changement de garde normal
+
 	if f.action == FighterState.Action.ATTACK:
-		_step_attack(f, cfg, moves, wish)
+		_step_attack(f, cfg, moves, wish, held)
 	if f.action == FighterState.Action.HITSTUN:
 		_step_hitstun(f, mv)
 		_try_burst(f, cfg, moves)
@@ -87,6 +95,8 @@ static func _tick_timers(f: FighterState, cfg: Dictionary) -> void:
 		f.parry_lockout -= 1
 	if f.burst_buffer > 0:
 		f.burst_buffer -= 1
+	if f.cancel_buffer > 0:
+		f.cancel_buffer -= 1
 	f.ticks_since_hit += 1
 	f.burst_gauge = mini(f.burst_gauge + int(bd["gauge_regen"]), int(bd["gauge_max"]))
 	if f.action == FighterState.Action.BLOCK or f.action == FighterState.Action.BLOCKSTUN:
@@ -223,6 +233,9 @@ static func start_move(f: FighterState, id: String, moves: MoveSet, cfg: Diction
 	f.move_tick = 1
 	f.hit_groups = 0
 	f.crouch = 0
+	f.charge_ticks = 0
+	f.in_stance = false
+	f.issen = false
 	# On garde une partie de son élan : pas de "frein à main" en lançant un coup.
 	var carry := float(cfg["attack"]["momentum_carry"])
 	f.vel.x *= carry
@@ -237,13 +250,41 @@ static func _clear_pending(f: FighterState) -> void:
 	f.pending_age = 0
 
 
-static func _step_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, wish: Vector3) -> void:
+static func _step_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, wish: Vector3, held: int) -> void:
 	var m := moves.get_move(f.move_id)
-	f.move_tick += 1
-	if m.is_empty() or f.move_tick > int(m["total"]):
+	if m.is_empty():
 		end_move(f)
 		return
+	var hold_bit := InputFrame.BLADE if m["button"] == "blade" else InputFrame.POMMEL
+
+	# Posture (ex : Iai) : tant qu'on maintient le bouton, le coup reste figé en fin de startup.
+	if f.in_stance:
+		var max_t := int(moves.mech("stance_max_ticks", 90))
+		if (held & hold_bit) and f.charge_ticks < max_t:
+			f.charge_ticks += 1
+			var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(cfg["movement"]["ground_accel"]) * DT)
+			f.vel.x = hv.x
+			f.vel.z = hv.z
+			return
+		f.in_stance = false
+		KatanaMechanic.on_stance_release(f, moves)
+
+	f.move_tick += 1
+	if f.move_tick > int(m["total"]):
+		end_move(f)
+		return
+	if m["stance"] and f.move_tick == int(m["startup"]) and (held & hold_bit):
+		f.in_stance = true
+		f.pending_fx = "stance"
+	if m["restore_edge"] and f.move_tick == int(m["startup"]) + int(m["active"]):
+		f.weapon_gauge = 100
+		f.pending_fx = "chiburi"
 	_apply_move_tick(f, m, cfg, wish)
+	# Issen : ruée éclair pendant les frames actives.
+	if f.issen and f.move_tick > int(m["startup"]) - 2 and f.move_tick <= int(m["startup"]) + int(m["active"]):
+		var v := f.forward() * float(moves.mech("issen_speed", 24.0))
+		f.vel.x = v.x
+		f.vel.z = v.z
 
 
 static func end_move(f: FighterState) -> void:
@@ -251,6 +292,9 @@ static func end_move(f: FighterState) -> void:
 	f.move_id = ""
 	f.move_tick = 0
 	f.hit_groups = 0
+	f.in_stance = false
+	f.issen = false
+	f.charge_ticks = 0
 
 
 ## Déplacement pendant un coup :
@@ -299,6 +343,8 @@ static func is_invulnerable(f: FighterState, moves: MoveSet) -> bool:
 static func ignores_pushbox(f: FighterState, moves: MoveSet) -> bool:
 	if f.action != FighterState.Action.ATTACK:
 		return false
+	if f.issen:
+		return true
 	var m := moves.get_move(f.move_id)
 	return not m.is_empty() and MoveSet.in_range(m["no_pushbox"], f.move_tick)
 

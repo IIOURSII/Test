@@ -27,6 +27,7 @@ var _blade_mat: StandardMaterial3D
 var _embers: CPUParticles3D
 var _aura_time: float = 0.0
 var _aura_color: Color = Color(1.0, 0.5, 0.15)
+var _ember_color: Color = Color(0, 0, 0, 0)
 
 
 func setup(cfg: Dictionary) -> void:
@@ -91,22 +92,50 @@ func _setup_aura() -> void:
 	katana.add_child(_embers)
 
 
+## Aura temporaire (parry, counter...).
 func aura(color: Color, seconds: float) -> void:
 	_aura_color = color
 	_aura_time = maxf(_aura_time, seconds)
+
+
+func _set_ember_color(color: Color) -> void:
+	if color == _ember_color:
+		return
+	_ember_color = color
 	var g := Gradient.new()
 	g.colors = PackedColorArray([Color(1, 1, 0.9, 1), color, Color(color.r, color.g * 0.3, 0.0, 0.0)])
 	g.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
 	_embers.color_ramp = g
 
 
-func _update_aura(delta: float) -> void:
+## Identité de l'arme : lueur liée au Zanshin, charge de posture, lame tachée quand elle s'émousse.
+func _update_weapon_identity(cur: FighterState, moves: MoveSet, delta: float) -> void:
 	_aura_time = maxf(_aura_time - delta, 0.0)
-	var k := clampf(_aura_time / 0.6, 0.0, 1.0)  # s'éteint sur la dernière demi-seconde
-	_embers.emitting = _aura_time > 0.0
-	_blade_mat.emission = _aura_color
-	_blade_mat.emission_energy_multiplier = k * (2.5 + sin(Time.get_ticks_msec() * 0.02) * 0.8)
-	trail.tint = _aura_color.lightened(0.3) if _aura_time > 0.0 else Color(1.0, 0.95, 0.85)
+	var style_aura := moves.style_color("aura", Color(1.0, 0.3, 0.1))
+	var temp := clampf(_aura_time / 0.6, 0.0, 1.0)
+	var pip_glow := float(cur.weapon_pips) / 3.0 * 0.6
+	var charge := 0.0
+	if cur.in_stance:
+		charge = clampf(float(cur.charge_ticks) / float(int(moves.mech("stance_max_ticks", 90))), 0.0, 1.0)
+	var glow := maxf(temp, pip_glow) + charge * 1.5
+	var col := _aura_color if _aura_time > 0.0 else style_aura
+	if cur.issen:
+		col = Color(1.0, 0.95, 0.9)
+		glow = 3.0
+	_blade_mat.emission = col
+	_blade_mat.emission_energy_multiplier = glow * (2.0 + sin(Time.get_ticks_msec() * 0.02) * 0.5)
+	_set_ember_color(col)
+	_embers.emitting = glow > 0.35
+
+	# Tranchant : la lame se tache de sang et perd son éclat quand elle s'émousse.
+	var dull := 1.0 - float(cur.weapon_gauge) / 100.0
+	_blade_mat.albedo_color = Color(0.85, 0.87, 0.9).lerp(Color(0.32, 0.04, 0.04), dull * 0.85)
+	_blade_mat.metallic = lerpf(0.9, 0.35, dull)
+	_blade_mat.roughness = lerpf(0.22, 0.65, dull)
+
+	trail.tint = col.lightened(0.4) if glow > 0.35 else moves.style_color("trail", Color(1.0, 0.95, 0.85))
+	if cur.in_stance:
+		katana.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * 0.004 * (0.3 + charge)
 
 
 ## Secousse + à-coup + zoom à l'impact (proportionnels à la puissance du coup).
@@ -137,7 +166,7 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 	var attacking := cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id)
 	if attacking:
 		var m := moves.get_move(cur.move_id)
-		var tc := float(cur.move_tick) + (0.0 if cur.hitstop > 0 else alpha)
+		var tc := float(cur.move_tick) + (0.0 if (cur.hitstop > 0 or cur.in_stance) else alpha)
 		var c := WeaponAnim.cam_curve(m, tc)
 		var cp: Dictionary = WeaponAnim.CAM.get(m["anim"], {})
 		var g := float(cur.guard)
@@ -150,7 +179,11 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 	camera.position = Vector3(0, 0, -cam_off.w)
 
 	var dashing := cur.action == FighterState.Action.DASH
-	var target_fov := BASE_FOV + (DASH_FOV_BONUS if dashing else 0.0) + _fov_punch
+	# Posture Iai : la vue se resserre pendant la charge (concentration).
+	var focus := 0.0
+	if cur.in_stance:
+		focus = -9.0 * clampf(float(cur.charge_ticks) / float(int(moves.mech("stance_max_ticks", 90))), 0.0, 1.0) - 2.0
+	var target_fov := BASE_FOV + (DASH_FOV_BONUS if dashing else 0.0) + _fov_punch + focus
 	camera.fov = lerpf(camera.fov, target_fov, 1.0 - exp(-delta * 18.0))
 	camera.fov = clampf(camera.fov, 60.0, 110.0)
 
@@ -163,7 +196,7 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 	var pose: Array
 	if cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id):
 		# Pendant le hitstop, l'arme reste figée (pas d'interpolation).
-		var t := float(cur.move_tick) + (0.0 if cur.hitstop > 0 else alpha)
+		var t := float(cur.move_tick) + (0.0 if (cur.hitstop > 0 or cur.in_stance) else alpha)
 		pose = WeaponAnim.pose_for_move(moves.get_move(cur.move_id), t, float(cur.guard))
 	elif cur.action == FighterState.Action.GUARD_SWITCH or cur.action == FighterState.Action.NONE \
 			or cur.action == FighterState.Action.DASH:
@@ -181,7 +214,7 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 		if m2["button"] == "blade" and not (m2["hitboxes"] as Array).is_empty() \
 				and cur.move_tick >= s0 and cur.move_tick <= e0 and cur.hitstop == 0:
 			trail.add_point(katana.transform * Vector3(0, 0.2, 0), katana.transform * Vector3(0, 0.92, 0))
-	_update_aura(delta)
+	_update_weapon_identity(cur, moves, delta)
 	trail.tick(delta, cur.hitstop > 0)
 
 

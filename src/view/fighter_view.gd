@@ -72,7 +72,7 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: flo
 	var side := float(cur.guard)
 	var pose: Array
 	if cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id):
-		var t := float(cur.move_tick) + (0.0 if frozen else alpha)
+		var t := float(cur.move_tick) + (0.0 if (frozen or cur.in_stance) else alpha)
 		pose = WeaponAnim.pose_for_move(moves.get_move(cur.move_id), t, side)
 	else:
 		var target := WeaponAnim.state_pose(cur)

@@ -55,6 +55,8 @@ func refresh(moves: MoveSet, guard: int, controls: Dictionary, force: bool = fal
 	s += "Avancer, sauter et s'accroupir ne comptent pas.\n"
 	s += "Exemple : [b]236[/b] = %s, puis %s+%s, puis %s, puis clic.   [b]66[/b] = %s deux fois puis clic.[/color]\n\n" % [k_back, k_back, k_right, k_right, k_right]
 	s += "[color=#e05a4a][b]LAME[/b] = clic gauche[/color]     [color=#e0c04a][b]POMMEAU[/b] = clic droit[/color]\n\n"
+	if moves.mechanic_desc != "":
+		s += "[color=#ff8a8a]%s[/color]\n\n" % moves.mechanic_desc
 	s += "[color=#9fc8ff][b]DÉFENSE[/b] — maintenir [b]E[/b] = garde (de face seulement). Appuyer sur [b]E[/b] juste avant l'impact = [b]PARRY[/b] (l'adversaire est ouvert). "
 	s += "Rater un parry bloque le suivant un moment. Les overheads se bloquent DEBOUT, les coups bas ACCROUPI.\n"
 	s += "[b]Triangle[/b] : la LAME bat le POMMEAU (en cas d'échange), le POMMEAU brise la GARDE, la GARDE bat la LAME.\n"

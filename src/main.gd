@@ -122,120 +122,173 @@ func _view_of(i: int) -> FighterView:
 
 
 ## Sons, effets visuels et messages déclenchés par la simulation.
-## C'est ici que se règle le côté "aura farm" : impact frames, coupes, kanji...
+## Règle de mise en scène (pour que ça reste classe et pas "cheap") :
+##   - coup normal  : étoile + coupe + quelques étincelles, rien d'autre ;
+##   - gros coup    : coupe plus grande + zoom ;
+##   - moments forts (counter, parry, contre Iai, guard break, burst, Issen) :
+##     impact frame TRÈS courte (2-3 images), sceau kanji, lignes de vitesse.
 func _play_event(e: Dictionary) -> void:
 	var kind: String = e["type"]
-	if kind in ["hit", "block", "parry", "guard_break", "guard_crush"]:
+	if kind in ["hit", "block", "parry", "guard_break", "guard_crush", "iai_counter"]:
 		_play_contact(kind, e)
 		return
+	var fi: int = e.get("fighter", -1)
+	var ms: MoveSet = world.movesets[fi] if fi >= 0 else katana
 	match kind:
 		"burst":
 			fx.burst_wave(e["pos"])
 			sfx.play("hit_heavy", 3.0, 0.0)
 			sfx.play("dash", 0.0)
-			post.impact_frame(Color(1.0, 0.8, 0.3), true, 0.08)
-			post.speed_lines(0.8, 0.25, Color(1.0, 0.85, 0.4))
-			post.punch(1.0, 1.0)
-			hud.popup("BURST", Color(1.0, 0.8, 0.3), "爆")
-			if e["fighter"] != 0:
+			post.impact_frame(Color(1.0, 0.8, 0.3), true, 0.05)
+			post.speed_lines(0.6, 0.15, Color(1.0, 0.85, 0.4))
+			post.punch(0.8, 0.8)
+			hud.popup("BURST", Color(1.0, 0.75, 0.25), "爆")
+			if fi != 0:
 				fp_view.on_impact(0.8, false)
 		"swing":
 			if e["button"] == "blade":
 				sfx.play("swish_heavy" if e["heavy"] else "swish", -4.0)
-				if e["heavy"] and e["fighter"] == 0:
-					post.speed_lines(0.25, 0.05)
 			else:
 				sfx.play("swish_soft", -8.0)
 		"dash":
 			sfx.play("dash", -9.0)
-			if e["fighter"] == 0:
-				post.speed_lines(0.35, 0.1)
+			if fi == 0:
+				post.speed_lines(0.2, 0.06)
 		"guard":
 			sfx.play("shing", -12.0, 0.03)
+		# --- Voie du sabre ---
+		"stance":
+			sfx.play("click", -2.0, 0.02)
+		"iai_draw":
+			sfx.play("swish_heavy", -1.0)
+		"issen":
+			sfx.play("parry", 0.0, 0.0)
+			sfx.play("swish_heavy", 2.0, 0.0)
+			post.impact_frame(Color(0.95, 0.95, 0.95), true, 0.12)
+			post.speed_lines(0.9, 0.3)
+			post.punch(1.0, 1.2)
+			hud.popup("ISSEN", ms.style_color("kanji_color", Color(0.9, 0.1, 0.1)), "一閃")
+		"zanshin_gain":
+			sfx.play("chin", -6.0, 0.02)
+		"zanshin_cancel":
+			sfx.play("shing", -2.0, 0.02)
+			sfx.play("click", -4.0)
+			fx.star(e["pos"], ms.style_color("aura", Color(1, 0.1, 0.1)), 0.9, 0.1)
+			if fi == 0:
+				post.speed_lines(0.35, 0.06, ms.style_color("aura", Color(1, 0.1, 0.1)))
+				fp_view.aura(ms.style_color("aura", Color(1, 0.1, 0.1)), 0.5)
+		"chiburi":
+			sfx.play("swish_soft", -2.0)
+			sfx.play("ring", -10.0, 0.02)
+			if fi == 0:
+				fp_view.aura(Color(1.0, 1.0, 1.0), 0.35)
 
 
 func _play_contact(kind: String, e: Dictionary) -> void:
 	var power := clampf(float(e["hitstop"]) / 15.0, 0.25, 1.0)
 	var att: int = e["attacker"]
 	var def: int = e["defender"]
+	var ms := world.movesets[att]
 	var dv := _view_of(def)
 	var pos: Vector3 = e["pos"]
 	var anim: String = e.get("anim", "")
 	var g: int = e.get("guard", 1)
 	var feet := Vector3(pos.x, 0.04, pos.z)
+	var core := ms.style_color("slash_core", Color.WHITE)
+	var edge := ms.style_color("slash_edge", Color(1.0, 0.3, 0.1))
+	var ink := ms.style_color("slash_ink", Color(0.02, 0.0, 0.0))
+	var spark := ms.style_color("spark", Color(1.0, 0.8, 0.5))
+	var kanji_col := ms.style_color("kanji_color", Color(0.85, 0.1, 0.1))
+	var metal: bool = ms.style.get("metal_ring", false)
 	match kind:
 		"hit":
 			var blade: bool = e["button"] == "blade"
 			var counter: bool = e["counter"]
 			var heavy: bool = e["heavy"]
-			fx.impact(pos, e["dir"], power, "blade" if blade else "pommel")
+			var issen: bool = e.get("issen", false)
+			fx.impact(pos, e["dir"], power, "blade" if blade else "pommel", spark)
+			fx.star(pos, spark if blade else Color(1, 1, 0.9), 0.5 + 0.6 * power)
 			if blade:
-				var edge := Color(1.0, 0.1, 0.05) if counter else (Color(1.0, 0.45, 0.15) if heavy else Color(0.9, 0.85, 1.0))
-				fx.slash_mark(pos, anim, g, 1.6 + 1.6 * power + (1.0 if counter else 0.0), edge)
-			if counter:
-				sfx.play("hit_heavy", 2.0)
-				post.impact_frame(Color(1.0, 0.12, 0.08), true, 0.09)
-				post.speed_lines(0.9, 0.2, Color(1.0, 0.2, 0.15))
-				post.punch(1.2, 1.0)
-				fx.ring(pos, Color(1.0, 0.2, 0.1), 2.2, false, 0.35)
-				fx.ring(feet, Color(1.0, 0.3, 0.1), 3.0, true, 0.45)
-				hud.popup("COUNTER", Color(1.0, 0.25, 0.2), "斬")
-				if att == 0:
-					fp_view.aura(Color(1.0, 0.15, 0.05), 3.0)
-			elif heavy:
-				sfx.play("hit_heavy" if blade else "thock", 0.0)
-				post.impact_frame(Color(1.0, 0.95, 0.85), false, 0.05)
-				post.speed_lines(0.5, 0.1)
-				post.punch(0.7, 0.6)
-				fx.ring(feet, Color(1.0, 0.7, 0.4), 2.2, true, 0.4)
+				var length := 1.4 + 1.4 * power + (0.8 if counter else 0.0) + (4.0 if issen else 0.0)
+				fx.slash_mark(pos, "horizontal" if issen else anim, g, length,
+						core, Color(1.0, 0.05, 0.05) if counter else edge, ink)
+				sfx.play("hit_heavy" if (heavy or counter) else "hit", 1.0 if counter else (-1.0 if heavy else -3.0))
+				if metal:
+					sfx.play("ring", -14.0, 0.05)
 			else:
-				sfx.play("hit" if blade else "thock", -2.0 if blade else -1.0)
-				post.punch(0.35 * power, 0.15)
+				sfx.play("thock", 0.0 if counter else -1.0)
+			if issen:
+				post.impact_frame(Color(1.0, 0.1, 0.08), true, 0.08)
+				post.punch(1.2, 1.2)
+				fx.ring(feet, kanji_col, 4.0, true, 0.5, 0.03)
+			elif counter:
+				post.impact_frame(Color(1.0, 0.12, 0.08), true, 0.035)
+				post.speed_lines(0.5, 0.08, Color(1.0, 0.25, 0.2))
+				post.punch(0.9, 0.7)
+				hud.popup("COUNTER", Color(1.0, 0.2, 0.15), "斬")
+				if att == 0:
+					fp_view.aura(Color(1.0, 0.15, 0.05), 2.0)
+			elif heavy:
+				post.punch(0.45, 0.45)
+			else:
+				post.punch(0.12, 0.05)
 			if dv:
 				dv.flash(power, Color(1.0, 0.3, 0.2) if counter else Color.WHITE)
 			if e.has("wrong_height"):
-				hud.popup("%s !" % e["wrong_height"], Color(1.0, 0.6, 0.2), "崩")
+				hud.popup(str(e["wrong_height"]), Color(1.0, 0.6, 0.2), "崩")
 			elif e["punish"] and not counter:
-				hud.popup("PUNISH", Color(1.0, 0.55, 0.9), "罰")
+				hud.popup("PUNISH", Color(0.95, 0.5, 0.85), "罰")
 			if def == 0:
 				hud.hurt_flash(power)
+				if e.get("splash", false):
+					hud.blood_splash()
 		"block":
 			fx.impact(pos, e["dir"], power, "block")
-			fx.slash_mark(pos, "thrust", g, 0.9 + 0.6 * power, Color(0.4, 0.65, 1.0), 0.18)
+			fx.star(pos, Color(0.6, 0.8, 1.0), 0.35 + 0.3 * power, 0.08)
 			sfx.play("clang", -3.0)
 			sfx.play("thock", -10.0)
-			post.punch(0.25, 0.1)
+			post.punch(0.15, 0.05)
 			if dv:
 				dv.flash(0.3, Color(0.5, 0.7, 1.0), false)
 		"parry":
 			fx.impact(pos, e["dir"], 1.0, "parry")
-			fx.ring(pos, Color(1.0, 0.85, 0.35), 3.0, false, 0.45, 0.05)
-			fx.ring(feet, Color(1.0, 0.75, 0.3), 3.5, true, 0.5)
-			fx.slash_mark(pos, "thrust", 1, 3.2, Color(1.0, 0.75, 0.2), 0.3)
+			fx.star(pos, Color(1.0, 0.85, 0.35), 1.8, 0.16)
+			fx.ring(pos, Color(1.0, 0.85, 0.35), 2.2, false, 0.3, 0.04)
 			sfx.play("parry", 3.0, 0.02)
 			sfx.play("hit", -6.0)
-			post.impact_frame(Color(1.0, 0.82, 0.35), true, 0.1)
-			post.speed_lines(0.85, 0.25, Color(1.0, 0.9, 0.5))
-			post.punch(1.0, 0.8)
-			hud.popup("PARRY", Color(1.0, 0.85, 0.3), "弾")
+			post.impact_frame(Color(1.0, 0.82, 0.35), true, 0.05)
+			post.speed_lines(0.6, 0.12, Color(1.0, 0.9, 0.5))
+			post.punch(0.8, 0.6)
+			hud.popup("PARRY", Color(1.0, 0.8, 0.3), "弾")
 			if dv:
 				dv.flash(1.0, Color(1.0, 0.85, 0.3), false)
 			if def == 0:
-				fp_view.aura(Color(1.0, 0.7, 0.15), 3.5)
+				fp_view.aura(Color(1.0, 0.7, 0.15), 2.5)
+			power = 1.0
+		"iai_counter":
+			# Contre depuis la posture : dégaine éclair horizontale.
+			fx.impact(pos, e["dir"], 1.0, "blade", spark)
+			fx.star(pos, Color.WHITE, 1.4, 0.14)
+			fx.slash_mark(pos, "iai", g, 4.0, core, edge, ink, 0.3)
+			sfx.play("hit_heavy", 2.0)
+			sfx.play("ring", -6.0, 0.02)
+			post.impact_frame(Color(0.95, 0.95, 0.95), true, 0.05)
+			post.speed_lines(0.6, 0.1)
+			post.punch(1.0, 0.8)
+			hud.popup("IAI", kanji_col, "返")
 			power = 1.0
 		"guard_break", "guard_crush":
 			fx.impact(pos, e["dir"], 1.0, "pommel")
-			fx.ring(pos, Color(0.45, 0.7, 1.0), 2.5, false, 0.4)
-			fx.ring(feet, Color(0.45, 0.7, 1.0), 3.0, true, 0.45)
+			fx.star(pos, Color(0.55, 0.75, 1.0), 1.3, 0.14)
+			fx.ring(feet, Color(0.45, 0.7, 1.0), 2.5, true, 0.35, 0.04)
 			sfx.play("thock", 2.0)
 			sfx.play("hit_heavy", -4.0)
-			post.impact_frame(Color(0.5, 0.75, 1.0), true, 0.08)
-			post.speed_lines(0.6, 0.15, Color(0.6, 0.8, 1.0))
-			post.punch(0.9, 0.7)
+			post.impact_frame(Color(0.5, 0.75, 1.0), true, 0.035)
+			post.punch(0.7, 0.5)
 			if kind == "guard_break":
-				hud.popup("GUARD BREAK", Color(0.5, 0.75, 1.0), "破")
+				hud.popup("GUARD BREAK", Color(0.55, 0.75, 1.0), "破")
 			else:
-				hud.popup("GUARD CRUSH", Color(0.5, 0.75, 1.0), "崩")
+				hud.popup("GUARD CRUSH", Color(0.55, 0.75, 1.0), "崩")
 			if dv:
 				dv.flash(1.0, Color(0.5, 0.75, 1.0))
 			if def == 0:

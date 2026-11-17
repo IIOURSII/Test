@@ -20,8 +20,13 @@ var burst_fill: Array[ColorRect] = []
 var popup_label: Label
 var popup_box: Control
 var popup_kanji: Label
-var popup_brush: Panel
-var _brush_style: StyleBoxFlat
+var popup_seal: ColorRect
+var _seal_mat: ShaderMaterial
+var weapon_label: Label
+var pip_rects: Array[ColorRect] = []
+var edge_fill: ColorRect
+var charge_fill: ColorRect
+var _cjk_font: SystemFont
 var damage_flash: ColorRect
 var dummy_label: Label
 var _popup_tw: Tween
@@ -47,48 +52,45 @@ func setup() -> void:
 	_make_hp_bar(0, "TOI", -BAR_W - 20.0)
 	_make_hp_bar(1, "MANNEQUIN", 20.0)
 
-	# Popup "aura" : trait de pinceau + kanji géant + sous-titre.
+	_cjk_font = SystemFont.new()
+	_cjk_font.font_names = PackedStringArray(["Yu Mincho", "MS Mincho", "Noto Serif CJK JP", "Hiragino Mincho ProN",
+			"Noto Sans CJK JP", "Yu Gothic", "MS Gothic", "Hiragino Sans"])
+	_cjk_font.font_weight = 700
+
+	# Popup : sceau rouge (hanko) avec le kanji, et le nom du coup en petites capitales espacées.
 	popup_box = Control.new()
 	popup_box.set_anchors_preset(Control.PRESET_CENTER)
-	popup_box.offset_left = -330
-	popup_box.offset_right = 330
-	popup_box.offset_top = -300
-	popup_box.offset_bottom = -60
-	popup_box.pivot_offset = Vector2(330, 120)
+	popup_box.offset_left = 90
+	popup_box.offset_right = 520
+	popup_box.offset_top = -230
+	popup_box.offset_bottom = -90
+	popup_box.pivot_offset = Vector2(65, 70)
 	popup_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popup_box.modulate.a = 0.0
 	add_child(popup_box)
 
-	popup_brush = Panel.new()
-	_brush_style = StyleBoxFlat.new()
-	_brush_style.bg_color = Color(0.05, 0.02, 0.02, 0.85)
-	_brush_style.skew = Vector2(0.35, 0.0)
-	_brush_style.set_corner_radius_all(40)
-	popup_brush.add_theme_stylebox_override("panel", _brush_style)
-	popup_brush.position = Vector2(30, 95)
-	popup_brush.size = Vector2(600, 70)
-	popup_brush.pivot_offset = Vector2(300, 35)
-	popup_box.add_child(popup_brush)
+	popup_seal = ColorRect.new()
+	_seal_mat = ShaderMaterial.new()
+	_seal_mat.shader = load("res://shaders/hanko.gdshader")
+	popup_seal.material = _seal_mat
+	popup_seal.position = Vector2(0, 5)
+	popup_seal.size = Vector2(130, 130)
+	popup_box.add_child(popup_seal)
 
 	popup_kanji = Label.new()
-	var brush_font := SystemFont.new()
-	brush_font.font_names = PackedStringArray(["Yu Mincho", "MS Mincho", "Noto Serif CJK JP", "Hiragino Mincho ProN",
-			"Noto Sans CJK JP", "Yu Gothic", "MS Gothic", "Hiragino Sans"])
-	brush_font.font_weight = 800
-	popup_kanji.add_theme_font_override("font", brush_font)
-	popup_kanji.add_theme_font_size_override("font_size", 150)
-	popup_kanji.add_theme_constant_override("outline_size", 18)
-	popup_kanji.add_theme_color_override("font_outline_color", Color(0.02, 0.0, 0.0))
+	popup_kanji.add_theme_font_override("font", _cjk_font)
+	popup_kanji.add_theme_font_size_override("font_size", 92)
+	popup_kanji.add_theme_color_override("font_color", Color(1.0, 0.95, 0.88))
 	popup_kanji.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	popup_kanji.position = Vector2(0, -20)
-	popup_kanji.size = Vector2(660, 190)
+	popup_kanji.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	popup_kanji.position = Vector2(0, 5)
+	popup_kanji.size = Vector2(130, 130)
 	popup_box.add_child(popup_kanji)
 
-	popup_label = _make_label(34)
-	popup_label.add_theme_constant_override("outline_size", 10)
-	popup_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	popup_label.position = Vector2(0, 108)
-	popup_label.size = Vector2(660, 50)
+	popup_label = _make_label(22)
+	popup_label.add_theme_constant_override("outline_size", 6)
+	popup_label.position = Vector2(148, 52)
+	popup_label.size = Vector2(300, 40)
 	popup_box.add_child(popup_label)
 
 	dummy_label = _make_label(16)
@@ -142,6 +144,58 @@ func setup() -> void:
 	add_child(hint_label)
 
 
+## Panneau de la mécanique d'arme du joueur (katana : Zanshin 残心 + Tranchant 刃).
+func _make_weapon_panel(parent: Control) -> void:
+	weapon_label = _make_label(18)
+	weapon_label.add_theme_font_override("font", _cjk_font)
+	weapon_label.position = Vector2(0, 58)
+	weapon_label.text = "残心"
+	parent.add_child(weapon_label)
+	for k in 3:
+		var p := ColorRect.new()
+		p.size = Vector2(16, 16)
+		p.position = Vector2(48 + k * 22, 64)
+		p.rotation = PI / 4.0
+		p.pivot_offset = Vector2(8, 8)
+		parent.add_child(p)
+		pip_rects.append(p)
+	var e := _make_label(18)
+	e.add_theme_font_override("font", _cjk_font)
+	e.position = Vector2(140, 58)
+	e.text = "刃"
+	parent.add_child(e)
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.6)
+	bg.position = Vector2(166, 66)
+	bg.size = Vector2(160, 10)
+	parent.add_child(bg)
+	edge_fill = ColorRect.new()
+	edge_fill.position = Vector2(1, 1)
+	edge_fill.size = Vector2(158, 8)
+	bg.add_child(edge_fill)
+	charge_fill = ColorRect.new()
+	charge_fill.color = Color(1.0, 0.95, 0.85)
+	charge_fill.position = Vector2(340, 66)
+	charge_fill.size = Vector2(0, 10)
+	parent.add_child(charge_fill)
+
+
+func _update_weapon_panel(f: FighterState, moves: MoveSet) -> void:
+	if pip_rects.is_empty():
+		return
+	var katana := KatanaMechanic.is_katana(moves)
+	weapon_label.visible = katana
+	for k in pip_rects.size():
+		pip_rects[k].visible = katana
+		var on := k < f.weapon_pips
+		pip_rects[k].color = moves.style_color("aura", Color(1, 0.1, 0.1)) if on else Color(0.15, 0.12, 0.12, 0.8)
+	var e := float(f.weapon_gauge) / 100.0
+	edge_fill.size.x = 158.0 * e
+	edge_fill.color = Color(0.85, 0.88, 0.95).lerp(Color(0.55, 0.05, 0.05), 1.0 - e)
+	var mx := float(int(moves.mech("stance_max_ticks", 90)))
+	charge_fill.size.x = 120.0 * clampf(float(f.charge_ticks) / mx, 0.0, 1.0) if f.in_stance else 0.0
+
+
 func _make_label(font_size: int) -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", font_size)
@@ -180,6 +234,8 @@ func _make_hp_bar(i: int, title: String, x_offset: float) -> void:
 	var label := _make_label(14)
 	label.position = Vector2(6, 38)
 	bg.add_child(label)
+	if i == 0:
+		_make_weapon_panel(bg)
 	hp_fill.append(fill)
 	hp_text.append(label)
 	label.text = title
@@ -213,25 +269,47 @@ func record_input(frame: InputFrame) -> void:
 		_history.pop_back()
 
 
-## Gros kanji au pinceau + sous-titre : 斬 COUNTER, 弾 PARRY, 破 GUARD BREAK...
+## Coup de tampon : sceau rouge + kanji, et le nom en petites capitales espacées.
 func popup(text: String, color: Color, kanji: String = "") -> void:
-	popup_label.text = text
-	popup_label.add_theme_color_override("font_color", color)
+	var spaced := ""
+	for c in text:
+		spaced += c + " "
+	popup_label.text = spaced.strip_edges()
+	popup_label.add_theme_color_override("font_color", color.lightened(0.35))
 	popup_kanji.text = kanji
-	popup_kanji.add_theme_color_override("font_color", color.lightened(0.15))
-	_brush_style.bg_color = Color(color.r * 0.25, color.g * 0.08, color.b * 0.08, 0.85)
+	popup_kanji.add_theme_font_size_override("font_size", 92 if kanji.length() <= 1 else 54)
+	_seal_mat.set_shader_parameter("seal_color", Color(color.r * 0.85, color.g * 0.6, color.b * 0.6, 0.95))
+	_seal_mat.set_shader_parameter("seed", randf() * 100.0)
+	popup_seal.visible = kanji != ""
 	popup_box.modulate.a = 1.0
-	popup_box.rotation = deg_to_rad(randf_range(-7.0, 7.0))
-	popup_box.scale = Vector2.ONE * 1.9
-	popup_brush.scale = Vector2(0.0, 1.0)
+	popup_box.rotation = deg_to_rad(randf_range(-8.0, 8.0))
+	popup_box.scale = Vector2.ONE * 1.35
 	if _popup_tw:
 		_popup_tw.kill()
 	_popup_tw = popup_box.create_tween()
-	_popup_tw.set_parallel(true)
-	_popup_tw.tween_property(popup_box, "scale", Vector2.ONE, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_popup_tw.tween_property(popup_brush, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	_popup_tw.chain().tween_interval(0.5)
-	_popup_tw.chain().tween_property(popup_box, "modulate:a", 0.0, 0.3)
+	_popup_tw.tween_property(popup_box, "scale", Vector2.ONE, 0.06)
+	_popup_tw.tween_interval(0.55)
+	_popup_tw.tween_property(popup_box, "modulate:a", 0.0, 0.25)
+
+
+## Éclaboussure de sang à l'écran (Chiburi adverse) : gêne la vue une demi-seconde.
+func blood_splash() -> void:
+	var vp := get_viewport().get_visible_rect().size
+	for k in 5:
+		var r := ColorRect.new()
+		var m := ShaderMaterial.new()
+		m.shader = load("res://shaders/blood_blob.gdshader")
+		m.set_shader_parameter("seed", randf() * 100.0)
+		r.material = m
+		var s := randf_range(180.0, 420.0)
+		r.size = Vector2(s, s)
+		r.position = Vector2(randf_range(vp.x * 0.15, vp.x * 0.85) - s * 0.5, randf_range(vp.y * 0.15, vp.y * 0.85) - s * 0.5)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(r)
+		var tw := r.create_tween()
+		tw.tween_interval(0.45)
+		tw.tween_property(r, "modulate:a", 0.0, 0.35)
+		tw.tween_callback(r.queue_free)
 
 
 ## Voile rouge quand le joueur se fait toucher.
@@ -258,6 +336,7 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_m
 		burst_fill[i].size.x = BAR_W * clampf(float(f.burst_gauge) / bmax, 0.0, 1.0)
 		burst_fill[i].color = Color(1.0, 0.85, 0.3) if f.burst_gauge >= int(bmax) else Color(0.6, 0.45, 0.15)
 	dummy_label.text = "Mannequin : %s   (F2 pour changer)" % dummy_mode
+	_update_weapon_panel(p, moves)
 
 	crosshair.visible = mouse_captured
 	if mouse_captured:

@@ -7,11 +7,17 @@ const INPUT_ORDER := ["5", "6", "4", "2", "22", "214", "236", "66", "623", "44"]
 
 var weapon_name: String = ""
 var moves: Dictionary = {}
+var mechanic: Dictionary = {}    ## mécanique propre à l'arme (ex : Voie du sabre)
+var mechanic_desc: String = ""
+var style: Dictionary = {}       ## identité visuelle (couleurs des coupes, aura...)
 
 
 static func from_json(d: Dictionary) -> MoveSet:
 	var ms := MoveSet.new()
 	ms.weapon_name = str(d.get("weapon", "?"))
+	ms.mechanic = d.get("mechanic", {})
+	ms.mechanic_desc = str(d.get("mechanic_desc", ""))
+	ms.style = d.get("style", {})
 	var raw: Dictionary = d.get("moves", {})
 	for id in raw.keys():
 		ms.moves[id] = _normalize(str(id), raw[id])
@@ -34,6 +40,21 @@ func get_move(id: String) -> Dictionary:
 	return moves.get(id, {})
 
 
+func mechanic_type() -> String:
+	return str(mechanic.get("type", ""))
+
+
+func mech(key: String, default_value = 0):
+	return mechanic.get(key, default_value)
+
+
+func style_color(key: String, fallback: Color) -> Color:
+	var v = style.get(key, null)
+	if v is Array and v.size() >= 3:
+		return Color(float(v[0]), float(v[1]), float(v[2]))
+	return fallback
+
+
 static func _normalize(id: String, m: Dictionary) -> Dictionary:
 	var out := {}
 	out["id"] = id
@@ -54,6 +75,8 @@ static func _normalize(id: String, m: Dictionary) -> Dictionary:
 	out["no_pushbox"] = _range(m.get("no_pushbox", null))
 	out["guard_flip_at"] = int(m.get("guard_flip_at", -1))
 	out["tags"] = m.get("tags", [])
+	out["stance"] = bool(m.get("stance", false))
+	out["restore_edge"] = bool(m.get("restore_edge", false))
 
 	var movement: Array = []
 	for seg in m.get("movement", []):

@@ -60,6 +60,15 @@ var burst_gauge: int = 1000
 var burst_buffer: int = 0
 var last_adv_on_block: bool = false
 
+# --- Mécanique d'arme (le sens dépend de l'arme ; katana : Zanshin / Tranchant / posture Iai) ---
+var weapon_pips: int = 0        ## katana : points de Zanshin
+var weapon_gauge: int = 100     ## katana : Tranchant (0..100)
+var charge_ticks: int = 0       ## ticks passés en posture (charge)
+var in_stance: bool = false
+var issen: bool = false         ## le coup en cours est un Issen
+var cancel_buffer: int = 0
+var pending_fx: String = ""     ## événement visuel à signaler (posture, cancel, Issen...)
+
 var prev_buttons: int = 0
 
 
@@ -106,6 +115,13 @@ func copy() -> FighterState:
 	c.burst_gauge = burst_gauge
 	c.burst_buffer = burst_buffer
 	c.last_adv_on_block = last_adv_on_block
+	c.weapon_pips = weapon_pips
+	c.weapon_gauge = weapon_gauge
+	c.charge_ticks = charge_ticks
+	c.in_stance = in_stance
+	c.issen = issen
+	c.cancel_buffer = cancel_buffer
+	c.pending_fx = pending_fx
 	c.prev_buttons = prev_buttons
 	return c
 
