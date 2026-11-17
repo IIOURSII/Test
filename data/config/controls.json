@@ -1,0 +1,25 @@
+{
+  "_aide": "Touches du jeu. Tu peux mettre plusieurs touches par action, ex: [\"Z\", \"Up\"]. Souris : MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE, MOUSE_4, MOUSE_5. Noms de touches : lettres (A-Z), Space, Shift, Ctrl, Alt, Tab, Escape, F1..F12, Up, Down, Left, Right... Pour un clavier QWERTY, remplace Z/Q/S/D par W/A/S/D.",
+
+  "mouse_sensitivity": 0.0025,
+  "invert_y": false,
+
+  "bindings": {
+    "forward":      ["Z"],
+    "back":         ["S"],
+    "left":         ["Q"],
+    "right":        ["D"],
+    "jump":         ["Space"],
+    "crouch":       ["Ctrl"],
+    "dash":         ["Shift"],
+    "blade":        ["MOUSE_LEFT"],
+    "pommel":       ["MOUSE_RIGHT"],
+    "guard_switch": ["A"],
+    "parry":        ["E"],
+    "potion":       ["R"],
+    "taunt":        ["T"],
+    "move_list":    ["Tab"],
+    "debug":        ["F1"],
+    "reload_data":  ["F6"]
+  }
+}

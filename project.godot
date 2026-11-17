@@ -1,0 +1,25 @@
+; Fichier de configuration du projet Godot.
+; Ne pas modifier à la main sauf si tu sais ce que tu fais.
+
+config_version=5
+
+[application]
+
+config/name="Duel - Prototype Katana"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+
+[physics]
+
+common/physics_ticks_per_second=60
+common/max_physics_steps_per_frame=8
+common/physics_jitter_fix=0.0
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
