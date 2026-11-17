@@ -142,7 +142,7 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool) -> void
 
 	crosshair.visible = mouse_captured
 	if mouse_captured:
-		hint_label.text = "Tab : liste des coups  |  F1 : debug  |  F6 : recharger les données  |  Échap : libérer la souris"
+		hint_label.text = "Tab : liste des coups  |  F1 : debug  |  F6 : recharger les données  |  F7 : filtre rétro  |  Échap : libérer la souris"
 	else:
 		hint_label.text = "Souris libérée : clique dans la fenêtre pour reprendre"
 

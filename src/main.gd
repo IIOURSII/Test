@@ -11,6 +11,7 @@ extends Node3D
 const COMBAT_CFG := "res://data/config/combat.json"
 const CONTROLS_CFG := "res://data/config/controls.json"
 const KATANA := "res://data/weapons/katana.json"
+const GRAPHICS_CFG := "res://data/config/graphics.json"
 
 var cfg: Dictionary
 var controls: Dictionary
@@ -27,6 +28,7 @@ var hud: Hud
 var move_list: MoveList
 var fx: Fx
 var sfx: Sfx
+var post: PostProcess
 var show_debug: bool = true
 var _pending_events: Array = []
 
@@ -76,6 +78,9 @@ func _ready() -> void:
 	sfx = Sfx.new()
 	add_child(sfx)
 	sfx.setup()
+	post = PostProcess.new()
+	add_child(post)
+	post.setup(DataLoader.load_json(GRAPHICS_CFG))
 
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -143,6 +148,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		move_list.refresh(world.movesets[0], world.fighters[0].guard, controls, true)
 	elif event.is_action_pressed("reload_data"):
 		_reload_data()
+	elif event.is_action_pressed("toggle_filter"):
+		post.toggle()
 
 
 ## F6 : relit les fichiers JSON sans relancer le jeu.
@@ -167,5 +174,8 @@ func _reload_data() -> void:
 		katana = MoveSet.from_json(kd)
 		for i in world.movesets.size():
 			world.movesets[i] = katana
+	var gfx := DataLoader.load_json(GRAPHICS_CFG)
+	if not gfx.is_empty():
+		post.apply(gfx)
 	move_list.refresh(katana, world.fighters[0].guard, controls, true)
 	print("Données rechargées.")

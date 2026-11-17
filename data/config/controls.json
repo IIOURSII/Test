@@ -20,6 +20,7 @@
     "taunt":        ["T"],
     "move_list":    ["Tab"],
     "debug":        ["F1"],
-    "reload_data":  ["F6"]
+    "reload_data":  ["F6"],
+    "toggle_filter": ["F7"]
   }
 }

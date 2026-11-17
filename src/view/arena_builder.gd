@@ -15,10 +15,10 @@ static func build(parent: Node3D, cfg: Dictionary) -> void:
 
 static func _environment(parent: Node3D) -> void:
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.22, 0.25, 0.42)
-	sky_mat.sky_horizon_color = Color(0.95, 0.6, 0.42)
-	sky_mat.ground_horizon_color = Color(0.5, 0.35, 0.3)
-	sky_mat.ground_bottom_color = Color(0.1, 0.08, 0.08)
+	sky_mat.sky_top_color = Color(0.06, 0.06, 0.12)
+	sky_mat.sky_horizon_color = Color(0.45, 0.22, 0.18)
+	sky_mat.ground_horizon_color = Color(0.2, 0.12, 0.1)
+	sky_mat.ground_bottom_color = Color(0.03, 0.03, 0.04)
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
 
@@ -26,16 +26,21 @@ static func _environment(parent: Node3D) -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.6
+	env.ambient_light_energy = 0.45
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
+	env.glow_intensity = 1.2
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.16, 0.1, 0.09)
+	env.fog_density = 0.035
+	env.fog_sky_affect = 0.6
 	var we := WorldEnvironment.new()
 	we.environment = env
 	parent.add_child(we)
 
 	var sun := DirectionalLight3D.new()
-	sun.light_color = Color(1.0, 0.85, 0.7)
-	sun.light_energy = 1.2
+	sun.light_color = Color(1.0, 0.7, 0.5)
+	sun.light_energy = 0.55
 	sun.shadow_enabled = true
 	sun.rotation = Vector3(deg_to_rad(-40.0), deg_to_rad(35.0), 0)
 	parent.add_child(sun)
@@ -56,6 +61,7 @@ static func _floor(parent: Node3D, half: float) -> void:
 	m.albedo_texture = tex
 	m.roughness = 0.9
 	m.uv1_scale = Vector3(half, half, 1.0)  # 1 case = 1 mètre
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(half * 2.0, half * 2.0)
@@ -125,7 +131,8 @@ static func _lantern(parent: Node3D, at: Vector3) -> void:
 	parent.add_child(roof)
 	var light := OmniLight3D.new()
 	light.light_color = Color(1.0, 0.65, 0.35)
-	light.light_energy = 1.5
-	light.omni_range = 7.0
+	light.light_energy = 3.0
+	light.omni_range = 9.0
+	light.shadow_enabled = true
 	light.position = at + Vector3(0, 1.9, 0)
 	parent.add_child(light)

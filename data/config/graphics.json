@@ -1,0 +1,14 @@
+{
+  "_aide": "Style graphique rétro pixelisé. F7 en jeu = activer/désactiver le filtre, F6 = recharger ce fichier. pixel_size = taille d'un gros pixel (en pixels d'écran : 3 = fin, 6 = très gros). color_levels = nombre de nuances par couleur (moins = plus rétro). dither = intensité du tramage (0 = aucun). tint = teinte globale [rouge, vert, bleu].",
+  "enabled": true,
+  "pixel_size": 4,
+  "color_levels": 7,
+  "dither": 1.0,
+  "vignette": 0.65,
+  "grain": 0.05,
+  "saturation": 0.72,
+  "contrast": 1.15,
+  "brightness": 1.05,
+  "tint": [1.0, 0.9, 0.78],
+  "shadow_tint": [0.05, 0.035, 0.07]
+}
