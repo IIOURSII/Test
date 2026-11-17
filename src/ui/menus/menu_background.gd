@@ -18,6 +18,8 @@ var _auto_cycle: bool = true
 var _map_ids: Array = []
 var _cycle_index: int = 0
 var _fade: ColorRect
+var _views: Array = []    ## [[FighterView, FighterState]]
+var _empty_moves := MoveSet.new()
 
 
 func setup(config: Dictionary, map_ids: Array, start_id: String = "") -> void:
@@ -65,6 +67,7 @@ func _build(map_id: String) -> void:
 	add_child(_scene)
 	_map = MapData.from_json(map_id, DataLoader.load_json("res://data/maps/%s.json" % map_id))
 	_view = ArenaBuilder.build(_scene, _map)
+	_views.clear()
 	# Deux silhouettes en garde, face à face.
 	for i in 2:
 		var st := FighterState.new()
@@ -73,8 +76,9 @@ func _build(map_id: String) -> void:
 		st.guard = 1 if i == 0 else -1
 		var fv := FighterView.new()
 		_scene.add_child(fv)
-		fv.setup(cfg, Color(0.25, 0.28, 0.4) if i == 0 else Color(0.55, 0.15, 0.12))
-		fv.update_view(st, st, 0.0, 0.0, MoveSet.new())
+		fv.setup(cfg, Color(0.22, 0.26, 0.45) if i == 0 else Color(0.6, 0.13, 0.1))
+		fv.view_camera = camera
+		_views.append([fv, st])
 
 
 func _process(delta: float) -> void:
@@ -87,6 +91,8 @@ func _process(delta: float) -> void:
 		camera.look_at(Vector3(0, 1.2, 0), Vector3.UP)
 		if _view:
 			_view.update_tick(_time * 60.0)
+		for v in _views:
+			(v[0] as FighterView).update_view(v[1], v[1], 0.0, delta, _empty_moves)
 	if _auto_cycle and _map_ids.size() > 1:
 		_cycle_t += delta
 		if _cycle_t > CYCLE_SECONDS:

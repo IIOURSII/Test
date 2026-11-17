@@ -10,7 +10,17 @@ FPS de mêlée « Japon médiéval fantasy ». Phase 1 en cours.
    puis bouton vert **Code → Download ZIP**, et décompresse-le.
 3. Lance Godot → **Importer** → choisis le fichier `project.godot` du dossier → **Importer et éditer**.
 4. Appuie sur **F5** (ou le bouton ▶ en haut à droite) pour jouer.
-5. Écran titre → **DEBUG › Bac à sable** → choix de l'arme/classe → choix de la map → combat. **Échap** = pause.
+5. Écran titre :
+   - **Duel** : contre l'IA (Facile / Normal / Difficile), 2 rounds gagnants.
+   - **1 contre 1** : local en écran partagé, le Joueur 2 joue à la **manette**.
+   - **DEBUG › Bac à sable** : mannequin, frame data, hitbox (sera supprimé à la fin).
+   **Échap** (ou Start) = pause.
+
+### Manette (Joueur 2)
+Stick gauche : déplacement et manips · Stick droit : visée · **RT** lame · **RB** pommeau · **LT** garde/parry · **LB** dash · **A** saut · **B** accroupi · **X** changer de garde · **Y** potion · **R3** burst · **Croix haut** provocation · **Start** pause.
+
+### Manips (minimum 3 directions)
+236 / 214 (quarts de cercle), 623 / 421 (demi-lunes), 41236 / 63214 (demi-cercles). Réglables dans `combat.json > input > motions`.
 
 ## Touches (AZERTY par défaut, modifiables dans `data/config/controls.json`)
 
@@ -73,6 +83,8 @@ src/app.gd   ← écrans et lancement des combats ; src/game.gd = un combat
 - [ ] Étape 3 (reste) : charge du Iai, feinte, contre dos tourné, sang à l'écran, overhead
 - [x] Étape 4 (en partie) : garde, parry parfait, guard break, jauge de garde, burst, counter-hit, scaling des combos, mannequin d'entraînement
 - [x] Étape 3 et 4 terminées : contre dos tourné, clash/bind, potion, provocation
+- [x] Duel contre l'IA (3 difficultés, rounds, intro, KO au ralenti), 1 contre 1 local en écran partagé
+- [x] DA : persos en sprites 2D 8 directions, cel-shading, contour encre partout
 - [x] Menus (titre, armes + classe secondaire, maps, options, pause), 6 maps à thème + 1 de debug, filtres d'image au choix
 - [ ] Étape 5 : game feel (hitstop, shake, sons, intro, coup final)
 - [ ] Étape 6 : IA (barres de vie et liste de coups déjà là)

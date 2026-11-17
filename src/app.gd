@@ -70,8 +70,19 @@ func show_main_menu() -> void:
 func _on_main_action(id: String) -> void:
 	sfx.play("click", -6.0)
 	match id:
-		"sandbox":
+		"sandbox", "local":
+			_choice["mode"] = id
 			_show_weapon_select()
+		"duel":
+			_choice["mode"] = "duel_ai"
+			var ds := DifficultySelect.new()
+			_set_screen(ds)
+			ds.setup(DataLoader.load_json("res://data/ai.json"))
+			ds.back.connect(show_main_menu)
+			ds.done.connect(func(d: String) -> void:
+				sfx.play("click", -6.0)
+				_choice["difficulty"] = d
+				_show_weapon_select())
 		"options":
 			var o := OptionsMenu.new()
 			add_child(o)
@@ -118,11 +129,13 @@ func start_game() -> void:
 		background = null
 	game = Game.new()
 	add_child(game)
-	game.setup(post, sfx, {"weapon": _choice["weapon"], "class": _choice["class"], "map": _choice["map"], "mode": "sandbox"})
+	game.setup(post, sfx, {"weapon": _choice["weapon"], "class": _choice["class"], "map": _choice["map"],
+			"mode": _choice.get("mode", "sandbox"), "difficulty": _choice.get("difficulty", "normal")})
 	game.quit_to_menu.connect(_end_game)
 
 
 func _end_game() -> void:
+	Engine.time_scale = 1.0
 	if game:
 		game.queue_free()
 		game = null

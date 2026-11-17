@@ -1,0 +1,12 @@
+{
+  "_aide": "Profils de l'IA (mode Duel). reaction = ticks avant de réagir à une attaque (plus bas = plus fort). block/parry = chances de bloquer / de tenter un parry. aggression = chance d'attaquer à chaque tick quand c'est possible. special = chance de choisir un coup spécial. punish = chance de punir une ouverture. burst = chance de burster un combo. turn_speed = vitesse de visée (degrés/tick). aim_error = imprécision (degrés). mash_period = ticks entre deux clics pendant un bind.",
+  "facile":    {"label": "Facile",    "kanji": "易", "desc": "Réagit lentement, bloque peu, ne pare presque jamais. Pour apprendre les coups.",
+                "reaction": 24, "block": 0.35, "parry": 0.05, "aggression": 0.02, "special": 0.15, "punish": 0.3,
+                "burst": 0.2, "turn_speed": 4.0, "aim_error": 7.0, "mash_period": 12, "cooldown": [50, 90]},
+  "normal":    {"label": "Normal",    "kanji": "中", "desc": "Bloque souvent, pare parfois, punit les grosses erreurs. Un vrai duel.",
+                "reaction": 15, "block": 0.6, "parry": 0.18, "aggression": 0.035, "special": 0.3, "punish": 0.6,
+                "burst": 0.5, "turn_speed": 7.0, "aim_error": 3.0, "mash_period": 8, "cooldown": [30, 60]},
+  "difficile": {"label": "Difficile", "kanji": "難", "desc": "Réflexes vifs, pare souvent, punit tout et utilise ses spéciaux. Bonne chance.",
+                "reaction": 9, "block": 0.8, "parry": 0.4, "aggression": 0.05, "special": 0.4, "punish": 0.9,
+                "burst": 0.8, "turn_speed": 12.0, "aim_error": 1.0, "mash_period": 6, "cooldown": [18, 40]}
+}

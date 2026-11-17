@@ -7,6 +7,8 @@ const BASE_FOV := 80.0
 const DASH_FOV_BONUS := 10.0
 
 var camera: Camera3D
+var arms_camera: Camera3D       ## caméra du petit monde des bras (rendu en pixels, voir setup)
+var arms_overlay: CanvasLayer
 var arms: Node3D
 var katana: Node3D
 var forearm_main: MeshInstance3D
@@ -40,8 +42,43 @@ func setup(cfg: Dictionary) -> void:
 	camera.current = true
 	add_child(camera)
 
+	# Les bras et la lame sont rendus à part, en basse résolution (style sprite d'arme),
+	# puis affichés par-dessus la vue. Même DA que les persos : cel + contour encre + gros pixels.
+	arms_overlay = CanvasLayer.new()
+	arms_overlay.layer = -2   # sous le filtre d'image (layer -1), au-dessus de la 3D
+	add_child(arms_overlay)
+	var cont := SubViewportContainer.new()
+	cont.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cont.stretch = true
+	cont.stretch_shrink = 3
+	cont.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	cont.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	arms_overlay.add_child(cont)
+	var avp := SubViewport.new()
+	avp.transparent_bg = true
+	avp.own_world_3d = true
+	avp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	cont.add_child(avp)
+	var aenv := Environment.new()
+	aenv.background_mode = Environment.BG_CLEAR_COLOR
+	aenv.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	aenv.ambient_light_color = Color(0.6, 0.56, 0.6)
+	var awe := WorldEnvironment.new()
+	awe.environment = aenv
+	avp.add_child(awe)
+	var asun := DirectionalLight3D.new()
+	asun.rotation = Vector3(deg_to_rad(-35), deg_to_rad(-40), 0)
+	avp.add_child(asun)
+	arms_camera = Camera3D.new()
+	arms_camera.fov = BASE_FOV
+	arms_camera.near = 0.03
+	arms_camera.far = 20.0
+	arms_camera.current = true
+	avp.add_child(arms_camera)
+	avp.add_child(InkOutline.create(1.0, 10.0))
+
 	arms = Node3D.new()
-	camera.add_child(arms)
+	arms_camera.add_child(arms)
 
 	katana = MeshUtil.katana()
 	arms.add_child(katana)
@@ -59,7 +96,7 @@ func setup(cfg: Dictionary) -> void:
 	gourd.add_child(g2)
 	gourd.add_child(cord)
 	gourd.visible = false
-	camera.add_child(gourd)
+	arms_camera.add_child(gourd)
 
 	var skin := Color(0.85, 0.66, 0.5)
 	var sleeve := Color(0.15, 0.17, 0.25)
@@ -207,6 +244,9 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 		gourd.position = Vector3(-0.28, -0.55, -0.45).lerp(Vector3(-0.04, -0.12, -0.24), up)
 		gourd.rotation = Vector3(-1.6 * up, 0, 0.4 * up)
 		camera.rotation.x += deg_to_rad(14.0) * up
+		arms_camera.rotation.x = deg_to_rad(10.0) * up
+	else:
+		arms_camera.rotation.x = 0.0
 
 	var dashing := cur.action == FighterState.Action.DASH
 	# Posture Iai : la vue se resserre pendant la charge (concentration).
@@ -216,6 +256,7 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 	var target_fov := BASE_FOV + (DASH_FOV_BONUS if dashing else 0.0) + _fov_punch + focus
 	camera.fov = lerpf(camera.fov, target_fov, 1.0 - exp(-delta * 18.0))
 	camera.fov = clampf(camera.fov, 60.0, 110.0)
+	arms_camera.fov = camera.fov
 
 	var hspeed := Vector2(cur.vel.x, cur.vel.z).length()
 	var moving := cur.on_ground and hspeed > 0.5 and cur.action != FighterState.Action.ATTACK

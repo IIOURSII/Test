@@ -1,47 +1,95 @@
 class_name FighterView
 extends Node3D
-## Représentation d'un combattant vu de l'extérieur (mannequin, IA, adversaire).
+## Un combattant vu de l'extérieur, en SPRITE 2D qui "tourne" en fausse 3D (8 directions),
+## comme les sprites de Pokémon/Doom dans un monde 3D.
+## Technique : un petit Puppet cel-shadé est photographié en basse résolution depuis l'angle
+## d'où on le regarde (arrondi à 45°), puis affiché sur un panneau toujours face à la caméra.
+## Toutes les animations (coups, garde, sonné...) marchent donc automatiquement.
 
-var body: MeshInstance3D
-var head: MeshInstance3D
-var visor: MeshInstance3D
-var katana: Node3D
-var _body_mat: StandardMaterial3D
-var _head_mat: StandardMaterial3D
+const VP := 128              ## résolution du sprite (pixels)
+const SPRITE_H := 2.7        ## hauteur couverte par le sprite (mètres)
+const DIRECTIONS := 8
+
+var view_camera: Camera3D    ## la caméra qui regarde ce sprite (null = caméra active)
+var sprite: Sprite3D
+var puppet: Puppet
+var _vp: SubViewport
+var _cam: Camera3D
+var _shadow: MeshInstance3D
 var _cfg: Dictionary
 var _flash: float = 0.0
-var _recoil: float = 0.0
-var _pose: Array = []
 var _flash_color: Color = Color.WHITE
+var _recoil: float = 0.0
 var _turn: float = 0.0
 
 
-func setup(cfg: Dictionary, color: Color) -> void:
+## layer_bit : couche de rendu du sprite (pour qu'un joueur ne voie pas son propre sprite).
+func setup(cfg: Dictionary, color: Color, layer_bit: int = 1, accent: Color = Color(0, 0, 0, 0)) -> void:
 	_cfg = cfg
-	var r: float = cfg["fighter"]["radius"]
-	body = MeshUtil.capsule(r, 1.5, color)
-	_body_mat = body.material_override as StandardMaterial3D
-	add_child(body)
-	head = MeshUtil.sphere(0.17, color.lightened(0.25))
-	_head_mat = head.material_override as StandardMaterial3D
-	add_child(head)
-	# Bandeau sombre sur le visage : montre de quel côté il regarde.
-	visor = MeshUtil.box(Vector3(0.26, 0.06, 0.06), Color(0.05, 0.05, 0.05))
-	add_child(visor)
-	katana = MeshUtil.katana()
-	add_child(katana)
-	for m in [_body_mat, _head_mat]:
-		m.emission_enabled = true
-		m.emission = Color.WHITE
-		m.emission_energy_multiplier = 0.0
+	if accent.a == 0.0:
+		accent = color.lightened(0.35) if color.get_luminance() < 0.35 else color.darkened(0.45)
+	_vp = SubViewport.new()
+	_vp.size = Vector2i(VP, VP)
+	_vp.transparent_bg = true
+	_vp.own_world_3d = true
+	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_vp)
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.55, 0.52, 0.58)
+	env.ambient_light_energy = 1.0
+	var we := WorldEnvironment.new()
+	we.environment = env
+	_vp.add_child(we)
+	var sun := DirectionalLight3D.new()
+	sun.rotation = Vector3(deg_to_rad(-50), deg_to_rad(30), 0)
+	sun.light_energy = 1.1
+	_vp.add_child(sun)
+	puppet = Puppet.new()
+	_vp.add_child(puppet)
+	puppet.setup(color, accent)
+	_cam = Camera3D.new()
+	_cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	_cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	_cam.size = SPRITE_H
+	_cam.far = 30.0
+	_cam.current = true
+	_vp.add_child(_cam)
+	_vp.add_child(InkOutline.create(1.0, 100.0))
+
+	sprite = Sprite3D.new()
+	sprite.texture = _vp.get_texture()
+	sprite.pixel_size = SPRITE_H / float(VP)
+	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	sprite.shaded = false
+	sprite.double_sided = true
+	sprite.position.y = SPRITE_H * 0.5 - 0.15
+	sprite.layers = layer_bit
+	add_child(sprite)
+
+	# Ombre ronde sous les pieds (ancre le sprite au sol).
+	_shadow = MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.45
+	cm.bottom_radius = 0.45
+	cm.height = 0.01
+	_shadow.mesh = cm
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.albedo_color = Color(0, 0, 0, 0.4)
+	_shadow.material_override = sm
+	_shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_shadow)
 
 
-## Flash blanc quand il est touché.
+## Flash quand il est touché.
 func flash(power: float = 1.0, color: Color = Color.WHITE, recoil: bool = true) -> void:
 	_flash = 1.0
 	_flash_color = color
-	_body_mat.emission = color
-	_head_mat.emission = color
 	if recoil:
 		_recoil = maxf(_recoil, 0.6 + 0.6 * power)
 
@@ -50,42 +98,32 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: flo
 	var fcfg: Dictionary = _cfg["fighter"]
 	var frozen := cur.hitstop > 0
 	position = cur.pos if frozen else prev.pos.lerp(cur.pos, alpha)
-	var yaw := lerp_angle(prev.yaw_rad(), cur.yaw_rad(), alpha)
-
-	# Recule le buste quand il est sonné, tremble pendant le hitstop.
-	_recoil = move_toward(_recoil, 0.0, delta * 3.0)
-	var tilt := (0.12 if cur.action == FighterState.Action.HITSTUN else 0.0) + 0.3 * _recoil
-	var tremble := Vector3.ZERO
 	if frozen and cur.action == FighterState.Action.HITSTUN:
-		tremble = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.05
-	position += tremble
+		position += Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.05
+	_shadow.global_position = Vector3(position.x, cur.floor_y + 0.02, position.z)
+	var air := clampf((position.y - cur.floor_y) / 2.0, 0.0, 1.0)
+	_shadow.scale = Vector3.ONE * (1.0 - air * 0.5)
+
 	var turn_target := 0.0
 	if cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id) and moves.get_move(cur.move_id)["turn_back"]:
 		turn_target = PI
 	_turn = lerp_angle(_turn, turn_target, 1.0 - exp(-delta * 9.0))
-	rotation = Vector3(tilt, yaw + _turn, 0)
+	var yaw := lerp_angle(prev.yaw_rad(), cur.yaw_rad(), alpha) + _turn
 
-	var crouch_t := lerpf(prev.crouch, cur.crouch, alpha) / float(FighterLogic.CROUCH_TICKS)
-	var h := lerpf(float(fcfg["height"]), float(fcfg["crouch_height"]), crouch_t)
-	var body_h := h - 0.3
-	body.scale = Vector3(1, body_h / 1.5, 1)
-	body.position = Vector3(0, body_h * 0.5, 0)
-	head.position = Vector3(0, h - 0.17, 0)
-	visor.position = Vector3(0, h - 0.15, -0.15)
-
-	# Même animation que la vue FPS, placée devant le torse.
-	var side := float(cur.guard)
-	var pose: Array
-	if cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id):
-		var t := float(cur.move_tick) + (0.0 if (frozen or cur.in_stance) else alpha)
-		pose = WeaponAnim.pose_for_move(moves.get_move(cur.move_id), t, side)
-	else:
-		var target := WeaponAnim.state_pose(cur)
-		pose = target if _pose.is_empty() else WeaponAnim.lerp_pose(_pose, target, 1.0 - exp(-delta * 30.0))
-	_pose = pose
-	var grip: Vector3 = pose[0]
-	katana.transform = Transform3D(WeaponAnim.basis_from_dir(pose[1]), Vector3(0, h - 0.25, 0) + grip * 1.2)
-
+	_recoil = move_toward(_recoil, 0.0, delta * 3.0)
 	_flash = move_toward(_flash, 0.0, delta * 8.0)
-	_body_mat.emission_energy_multiplier = _flash * 2.0
-	_head_mat.emission_energy_multiplier = _flash * 2.0
+	var tilt := (0.12 if cur.action == FighterState.Action.HITSTUN else 0.0) + 0.3 * _recoil
+	var crouch_t := lerpf(prev.crouch, cur.crouch, alpha) / float(FighterLogic.CROUCH_TICKS)
+	puppet.apply(cur, alpha, delta, moves, crouch_t, tilt, _flash, _flash_color)
+
+	# Angle de vue arrondi à 45° : c'est ce qui donne l'effet "sprite qui tourne".
+	var cam := view_camera if view_camera else get_viewport().get_camera_3d()
+	var snapped := 0.0
+	if cam:
+		var to_cam := cam.global_position - global_position
+		var local := Basis(Vector3.UP, yaw).inverse() * to_cam
+		var step := TAU / float(DIRECTIONS)
+		snapped = roundf(atan2(local.x, local.z) / step) * step
+	var cy := SPRITE_H * 0.5 - 0.15
+	_cam.position = Vector3(sin(snapped) * 8.0, cy, cos(snapped) * 8.0)
+	_cam.look_at(Vector3(0, cy, 0), Vector3.UP)

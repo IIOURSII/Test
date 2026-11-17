@@ -26,11 +26,14 @@ var map: MapData
 var map_view: MapView
 var params: Dictionary = {}
 
-var collector: InputCollector
-var dummy: DummyController          # DEBUG (mode bac à sable)
-var fp_view: FirstPersonView
-var dummy_view: FighterView
-var debug_draw: DebugDraw           # DEBUG
+var collector: InputCollector      ## joueur 1 : clavier/souris
+var pad: GamepadCollector          ## joueur 2 en local : manette
+var ai: AiController               ## adversaire en mode Duel
+var dummy: DummyController         # DEBUG (mode bac à sable)
+var fp_views: Array[FirstPersonView] = []    ## une vue FPS par joueur humain
+var fp_view: FirstPersonView                 ## raccourci : celle du joueur 1
+var fighter_views: Array[FighterView] = []   ## les sprites des deux combattants
+var debug_draw: DebugDraw          # DEBUG
 var hud: Hud
 var move_list: MoveList
 var fx: Fx
@@ -38,16 +41,32 @@ var sfx: Sfx
 var post: PostProcess
 var pause_menu: PauseMenu
 var options_menu: OptionsMenu
+var results: ResultsScreen
+var split_layer: CanvasLayer
 var paused: bool = false
 var show_debug: bool = true
 var _pending_events: Array = []
 
+# --- Match (modes Duel et Local) ---
+const ROUNDS_TO_WIN := 2
+var mode: String = "sandbox"       ## "sandbox" (debug), "duel_ai", "local"
+var difficulty: String = "normal"
+var match_state: String = "fight"  ## "intro", "fight", "ko", "between", "over"
+var state_ticks: int = 0
+var round_num: int = 1
+var score: Array[int] = [0, 0]
+var _ko_winner: int = -1
+var cine_cam: Camera3D
 
-## params : {"weapon": "katana", "class": "aucune", "map": "colisee", "mode": "sandbox"}
+
+## params : {"weapon", "class", "map", "mode": "sandbox"/"duel_ai"/"local", "difficulty"}
 func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 	params = p
 	post = post_process
 	sfx = shared_sfx
+	mode = str(p.get("mode", "sandbox"))
+	difficulty = str(p.get("difficulty", "normal"))
+	show_debug = mode == "sandbox"
 	cfg = DataLoader.load_json(COMBAT_CFG)
 	controls = DataLoader.load_json(CONTROLS_CFG)
 	ControlsSetup.apply(controls)
@@ -57,26 +76,42 @@ func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 	var map_id := str(p.get("map", "training"))
 	map = MapData.from_json(map_id, DataLoader.load_json("res://data/maps/%s.json" % map_id))
 	map_view = ArenaBuilder.build(self, map)
-
-	world = SimWorld.new(cfg, map)
-	world.add_fighter(map.spawns[0], map.spawn_yaw(0), katana)   # 0 = joueur
-	world.add_fighter(map.spawns[1], map.spawn_yaw(1), katana)   # 1 = mannequin (DEBUG)
-	world.training_dummies = [0, 1]
-	prev_states = world.snapshot()
+	_new_world()
 
 	collector = InputCollector.new()
 	add_child(collector)
 	collector.setup(controls, map.spawn_yaw(0))
 	collector.sensitivity = float(Settings.get_value("sensitivity"))
 	dummy = DummyController.new()
+	if mode == "duel_ai":
+		ai = AiController.new()
+		var profiles := DataLoader.load_json("res://data/ai.json")
+		ai.setup(profiles.get(difficulty, profiles.get("normal", {})), 12345)
+		ai.reset(map.spawn_yaw(1))
+	if mode == "local":
+		pad = GamepadCollector.new()
+		add_child(pad)
+		var pads := Input.get_connected_joypads()
+		pad.setup(pads[0] if pads.size() > 0 else 0, map.spawn_yaw(1))
 
-	fp_view = FirstPersonView.new()
-	add_child(fp_view)
-	fp_view.setup(cfg)
-
-	dummy_view = FighterView.new()
-	add_child(dummy_view)
-	dummy_view.setup(cfg, Color(0.7, 0.55, 0.35))
+	# Vues FPS (une par humain) et sprites des deux combattants.
+	var colors := [Color(0.22, 0.26, 0.45), Color(0.6, 0.13, 0.1)]
+	for i in 2:
+		var fv := FighterView.new()
+		add_child(fv)
+		fv.setup(cfg, colors[i], 1 << (1 + i))
+		fighter_views.append(fv)
+	if mode == "local":
+		_setup_split()
+	else:
+		var v := FirstPersonView.new()
+		add_child(v)
+		v.setup(cfg)
+		fp_views.append(v)
+	for k in fp_views.size():
+		fp_views[k].camera.cull_mask = 0xFFFFF & ~(1 << (1 + k))   # on ne voit pas son propre sprite
+	fp_view = fp_views[0]
+	_assign_viewers()
 
 	debug_draw = DebugDraw.new()
 	add_child(debug_draw)
@@ -85,6 +120,7 @@ func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup()
+	hud.configure(_names(), mode == "local", mode == "sandbox")
 
 	move_list = MoveList.new()
 	add_child(move_list)
@@ -95,21 +131,102 @@ func setup(post_process: PostProcess, shared_sfx: Sfx, p: Dictionary) -> void:
 	fx.setup()
 
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	hud.popup(map.name.to_upper(), Color(0.95, 0.9, 0.8), map.kanji)
+	if mode == "sandbox":
+		hud.popup(map.name.to_upper(), Color(0.95, 0.9, 0.8), map.kanji)
+	else:
+		_start_round(true)
+	if mode == "local" and not pad.is_pad_connected():
+		hud.message("Aucune manette détectée pour le Joueur 2 — branche une manette (le J2 joue à la manette).")
+
+
+func _names() -> Array:
+	match mode:
+		"duel_ai":
+			return ["TOI", "IA — %s" % difficulty.to_upper()]
+		"local":
+			return ["JOUEUR 1", "JOUEUR 2"]
+	return ["TOI", "MANNEQUIN"]
+
+
+func _new_world() -> void:
+	world = SimWorld.new(cfg, map)
+	world.add_fighter(map.spawns[0], map.spawn_yaw(0), katana)
+	world.add_fighter(map.spawns[1], map.spawn_yaw(1), katana)
+	if mode == "sandbox":
+		world.training_dummies.assign([0, 1])
+	prev_states = world.snapshot()
+
+
+## Écran partagé : deux vues côte à côte sur le même monde.
+func _setup_split() -> void:
+	split_layer = CanvasLayer.new()
+	split_layer.layer = -3
+	add_child(split_layer)
+	var hb := HBoxContainer.new()
+	hb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hb.add_theme_constant_override("separation", 4)
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	split_layer.add_child(hb)
+	for k in 2:
+		var cont := SubViewportContainer.new()
+		cont.stretch = true
+		cont.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cont.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		cont.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_child(cont)
+		var vp := SubViewport.new()
+		vp.world_3d = get_viewport().world_3d
+		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		cont.add_child(vp)
+		var v := FirstPersonView.new()
+		vp.add_child(v)
+		v.setup(cfg)
+		fp_views.append(v)
+
+
+## Chaque sprite est "photographié" depuis la caméra qui le regarde.
+func _assign_viewers() -> void:
+	for i in 2:
+		var viewer: Camera3D = null
+		if cine_cam:
+			viewer = cine_cam
+		elif mode == "local":
+			viewer = fp_views[1 - i].camera
+		else:
+			viewer = fp_views[0].camera
+		fighter_views[i].view_camera = viewer
+
+
+func _fp(i: int) -> FirstPersonView:
+	return fp_views[i] if i >= 0 and i < fp_views.size() else null
 
 
 func _physics_process(_delta: float) -> void:
 	if paused:
 		return
+	_update_match()
 	prev_states = world.snapshot()
-	var player_input := collector.poll()
-	var inputs: Array = [
-		player_input,
-		dummy.poll(world, 1, 0),
-	]
+	var inputs: Array = [_input_for(0), _input_for(1)]
 	world.step(inputs)
-	hud.record_input(player_input)
+	hud.record_input(inputs[0])
 	_pending_events.append_array(world.events)
+
+
+func _input_for(i: int) -> InputFrame:
+	var frame: InputFrame
+	if i == 0:
+		frame = collector.poll()
+	elif mode == "local":
+		frame = pad.poll()
+	elif mode == "duel_ai":
+		frame = ai.poll(world, 1, 0)
+	else:
+		frame = dummy.poll(world, 1, 0)
+	if match_state != "fight":
+		# Intro / KO / fin : personne ne bouge, on regarde l'adversaire.
+		var f := world.fighters[i]
+		frame = InputFrame.new(0, f.yaw if match_state != "intro" else InputFrame.yaw_to_int(map.spawn_yaw(i)), 0)
+	return frame
 
 
 func _process(delta: float) -> void:
@@ -121,11 +238,145 @@ func _process(delta: float) -> void:
 		_play_event(e)
 	_pending_events.clear()
 
-	fp_view.update_view(prev_states[0], world.fighters[0], a, collector.look_yaw, collector.look_pitch, delta, world.movesets[0])
-	dummy_view.update_view(prev_states[1], world.fighters[1], a, delta, world.movesets[1])
-	debug_draw.redraw(world, show_debug)
-	hud.update_hud(world, show_debug, collector.is_captured(), dummy.mode_name())
+	for k in fp_views.size():
+		var look := Vector2(collector.look_yaw, collector.look_pitch)
+		if k == 1 and pad:
+			look = Vector2(pad.look_yaw, pad.look_pitch)
+		fp_views[k].update_view(prev_states[k], world.fighters[k], a, look.x, look.y, delta, world.movesets[k])
+	for i in 2:
+		fighter_views[i].update_view(prev_states[i], world.fighters[i], a, delta, world.movesets[i])
+	if cine_cam:
+		cine_cam.position += cine_cam.global_transform.basis.x * delta * 0.35
+	debug_draw.redraw(world, show_debug and mode == "sandbox")
+	hud.update_hud(world, show_debug and mode == "sandbox", collector.is_captured(), dummy.mode_name())
+	hud.set_rounds(score, ROUNDS_TO_WIN)
 	move_list.refresh(world.movesets[0], world.fighters[0].guard, controls)
+
+
+# ------------------------------------------------------------ déroulé d'un match
+
+func _start_round(first: bool) -> void:
+	if not first:
+		_new_world()
+	match_state = "intro"
+	state_ticks = 0
+	collector.look_yaw = map.spawn_yaw(0)
+	collector.look_pitch = 0.0
+	if pad:
+		pad.look_yaw = map.spawn_yaw(1)
+		pad.look_pitch = 0.0
+	if ai:
+		ai.reset(map.spawn_yaw(1))
+	var kanji := ["一", "二", "三", "四", "五"]
+	hud.popup("ROUND %d" % round_num, Color(0.95, 0.9, 0.8), kanji[mini(round_num - 1, 4)])
+
+
+func _update_match() -> void:
+	if mode == "sandbox":
+		return
+	state_ticks += 1
+	match match_state:
+		"intro":
+			var dur := 150 if round_num == 1 else 90
+			# Premier round : chacun fait le geste propre à son arme (le kata du katana).
+			if round_num == 1 and state_ticks == 8:
+				for f in world.fighters:
+					FighterLogic.start_move(f, "taunt", world.movesets[f.id], cfg, Vector3.ZERO)
+			if state_ticks >= dur:
+				match_state = "fight"
+				state_ticks = 0
+				hud.popup("HAJIME", Color(1.0, 0.85, 0.4), "始")
+				sfx.play("shing", 0.0, 0.0)
+		"fight":
+			var dead0 := world.fighters[0].hp <= 0
+			var dead1 := world.fighters[1].hp <= 0
+			if dead0 or dead1:
+				_ko_winner = -1 if (dead0 and dead1) else (1 if dead0 else 0)
+				match_state = "ko"
+				state_ticks = 0
+				Engine.time_scale = 0.3
+				_start_cinematic()
+				hud.popup("KETCHAKU", Color(1.0, 0.2, 0.15), "決着")
+				post.impact_frame(Color(1.0, 0.15, 0.1), true, 0.15)
+				sfx.play("hit_heavy", 4.0, 0.0)
+		"ko":
+			if state_ticks >= 55:
+				Engine.time_scale = 1.0
+				_stop_cinematic()
+				if _ko_winner >= 0:
+					score[_ko_winner] += 1
+				match_state = "between"
+				state_ticks = 0
+				if _ko_winner >= 0 and score[_ko_winner] >= ROUNDS_TO_WIN:
+					match_state = "over"
+					_show_results(_ko_winner)
+		"between":
+			if state_ticks >= 50:
+				round_num += 1
+				_start_round(false)
+
+
+## Coup final au ralenti : caméra basse, de côté, qui glisse doucement.
+func _start_cinematic() -> void:
+	var a := world.fighters[0].pos
+	var b := world.fighters[1].pos
+	var mid := (a + b) * 0.5
+	var d := (b - a)
+	d.y = 0.0
+	d = d.normalized() if d.length() > 0.01 else Vector3.FORWARD
+	var perp := d.cross(Vector3.UP).normalized()
+	cine_cam = Camera3D.new()
+	cine_cam.fov = 50.0
+	add_child(cine_cam)
+	cine_cam.global_position = mid + perp * 3.4 + Vector3(0, 0.45, 0) - d * 0.6
+	cine_cam.look_at(mid + Vector3(0, 1.25, 0), Vector3.UP)
+	cine_cam.current = true
+	for v in fp_views:
+		v.arms_overlay.visible = false
+	if split_layer:
+		split_layer.visible = false
+	_assign_viewers()
+
+
+func _stop_cinematic() -> void:
+	if cine_cam:
+		cine_cam.queue_free()
+		cine_cam = null
+	for v in fp_views:
+		v.arms_overlay.visible = true
+	if split_layer:
+		split_layer.visible = true
+	elif not fp_views.is_empty():
+		fp_views[0].camera.current = true
+	_assign_viewers()
+
+
+func _show_results(winner: int) -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	collector.set_process_input(false)
+	results = ResultsScreen.new()
+	add_child(results)
+	var title := ""
+	var good := true
+	match mode:
+		"duel_ai":
+			title = "VICTOIRE" if winner == 0 else "DÉFAITE"
+			good = winner == 0
+		_:
+			title = "JOUEUR %d L'EMPORTE" % (winner + 1)
+	results.setup(title, good, score, _names())
+	results.action.connect(func(id: String) -> void:
+		if id == "rematch":
+			results.queue_free()
+			score.assign([0, 0])
+			round_num = 1
+			collector.set_process_input(true)
+			if pad:
+				pad.enabled = true
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			_start_round(false)
+		else:
+			quit_to_menu.emit())
 
 
 ## Charge une arme + les coups communs (Burst, Potion).
@@ -137,7 +388,7 @@ func _load_weapon(path: String) -> MoveSet:
 
 
 func _view_of(i: int) -> FighterView:
-	return dummy_view if i == 1 else null
+	return fighter_views[i] if i >= 0 and i < fighter_views.size() else null
 
 
 ## Sons, effets visuels et messages déclenchés par la simulation.
@@ -162,8 +413,9 @@ func _play_event(e: Dictionary) -> void:
 			post.speed_lines(0.6, 0.15, Color(1.0, 0.85, 0.4))
 			post.punch(0.8, 0.8)
 			hud.popup("BURST", Color(1.0, 0.75, 0.25), "爆")
-			if fi != 0:
-				fp_view.on_impact(0.8, false)
+			for k in fp_views.size():
+				if k != fi:
+					fp_views[k].on_impact(0.8, false)
 		"swing":
 			if e["button"] == "blade":
 				sfx.play("swish_heavy" if e["heavy"] else "swish", -4.0)
@@ -193,9 +445,9 @@ func _play_event(e: Dictionary) -> void:
 			sfx.play("shing", -2.0, 0.02)
 			sfx.play("click", -4.0)
 			fx.star(e["pos"], ms.style_color("aura", Color(1, 0.1, 0.1)), 0.9, 0.1)
-			if fi == 0:
+			if _fp(fi):
 				post.speed_lines(0.35, 0.06, ms.style_color("aura", Color(1, 0.1, 0.1)))
-				fp_view.aura(ms.style_color("aura", Color(1, 0.1, 0.1)), 0.5)
+				_fp(fi).aura(ms.style_color("aura", Color(1, 0.1, 0.1)), 0.5)
 		# --- Clash / bind ---
 		"clash":
 			fx.impact(e["pos"], e["dir"], 1.0, "parry")
@@ -207,10 +459,14 @@ func _play_event(e: Dictionary) -> void:
 			post.speed_lines(0.9, 0.6)
 			post.punch(1.0, 0.6)
 			hud.popup("CLASH", Color(1.0, 0.95, 0.85), "鍔")
-			fp_view.on_impact(1.0, true)
+			for v in fp_views:
+				v.on_impact(1.0, true)
 			# La vue se tourne face à l'adversaire.
 			collector.look_yaw = world.fighters[0].yaw_rad()
 			collector.look_pitch = 0.0
+			if pad:
+				pad.look_yaw = world.fighters[1].yaw_rad()
+				pad.look_pitch = 0.0
 		"bind_end":
 			var w: int = e["winner"]
 			fx.impact(e["pos"], e["dir"], 1.0, "block")
@@ -218,7 +474,10 @@ func _play_event(e: Dictionary) -> void:
 			sfx.play("hit_heavy", 0.0)
 			sfx.play("clang", -2.0)
 			post.punch(0.8, 0.5)
-			if w == 0:
+			if mode == "local" and w >= 0:
+				hud.popup("BIND — %s" % _names()[w], Color(1.0, 0.85, 0.35), "勝")
+				_fp(w).aura(Color(1.0, 0.7, 0.15), 1.5)
+			elif w == 0:
 				hud.popup("BIND GAGNÉ", Color(1.0, 0.85, 0.35), "勝")
 				fp_view.aura(Color(1.0, 0.7, 0.15), 1.5)
 			elif w == 1:
@@ -231,9 +490,9 @@ func _play_event(e: Dictionary) -> void:
 			fx.impact(e["pos"], e["dir"], 0.7, "block")
 			fx.star(e["pos"], Color(1.0, 0.9, 0.7), 0.7, 0.1)
 			sfx.play("clang", -1.0)
-			if fi == 0:
+			if _fp(fi):
 				hud.popup("REBOND", Color(0.8, 0.8, 0.85), "壁")
-				fp_view.on_impact(0.6, false)
+				_fp(fi).on_impact(0.6, false)
 		"burn":
 			fx.embers(e["pos"], 6, Color(1.0, 0.45, 0.1))
 			sfx.play("thock", -14.0, 0.2)
@@ -243,9 +502,9 @@ func _play_event(e: Dictionary) -> void:
 			fx.embers(e["pos"], 30, Color(1.0, 0.5, 0.1))
 			fx.ring(e["pos"], Color(1.0, 0.45, 0.1), 2.0, false, 0.35)
 			sfx.play("hit_heavy", -2.0)
-			if fi == 0:
+			if _fp(fi):
 				hud.hurt_flash(0.8)
-				fp_view.on_impact(0.9, false)
+				_fp(fi).on_impact(0.9, false)
 			hud.popup("GEYSER", Color(1.0, 0.5, 0.15), "噴")
 		# --- Objets ---
 		"potion":
@@ -261,8 +520,8 @@ func _play_event(e: Dictionary) -> void:
 		"chiburi":
 			sfx.play("swish_soft", -2.0)
 			sfx.play("ring", -10.0, 0.02)
-			if fi == 0:
-				fp_view.aura(Color(1.0, 1.0, 1.0), 0.35)
+			if _fp(fi):
+				_fp(fi).aura(Color(1.0, 1.0, 1.0), 0.35)
 
 
 func _play_contact(kind: String, e: Dictionary) -> void:
@@ -307,8 +566,8 @@ func _play_contact(kind: String, e: Dictionary) -> void:
 				post.speed_lines(0.5, 0.08, Color(1.0, 0.25, 0.2))
 				post.punch(0.9, 0.7)
 				hud.popup("COUNTER", Color(1.0, 0.2, 0.15), "斬")
-				if att == 0:
-					fp_view.aura(Color(1.0, 0.15, 0.05), 2.0)
+				if _fp(att):
+					_fp(att).aura(Color(1.0, 0.15, 0.05), 2.0)
 			elif heavy:
 				post.punch(0.45, 0.45)
 			else:
@@ -343,8 +602,8 @@ func _play_contact(kind: String, e: Dictionary) -> void:
 			hud.popup("PARRY", Color(1.0, 0.8, 0.3), "弾")
 			if dv:
 				dv.flash(1.0, Color(1.0, 0.85, 0.3), false)
-			if def == 0:
-				fp_view.aura(Color(1.0, 0.7, 0.15), 2.5)
+			if _fp(def):
+				_fp(def).aura(Color(1.0, 0.7, 0.15), 2.5)
 			power = 1.0
 		"iai_counter":
 			# Contre depuis la posture : dégaine éclair horizontale.
@@ -377,8 +636,9 @@ func _play_contact(kind: String, e: Dictionary) -> void:
 				dv.flash(1.0, Color(0.5, 0.75, 1.0))
 			if def == 0:
 				hud.hurt_flash(0.6)
-	if att == 0 or def == 0:
-		fp_view.on_impact(power, att == 0)
+	for k in fp_views.size():
+		if att == k or def == k:
+			fp_views[k].on_impact(power, att == k)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -387,7 +647,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_open_pause()
-	elif event.is_action_pressed("debug"):
+	elif event is InputEventJoypadButton and event.is_pressed() and (event as InputEventJoypadButton).button_index == JOY_BUTTON_START:
+		_open_pause()
+	elif event.is_action_pressed("debug") and mode == "sandbox":
 		show_debug = not show_debug
 	elif event.is_action_pressed("move_list"):
 		move_list.toggle()
@@ -396,7 +658,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_reload_data()
 	elif event.is_action_pressed("toggle_filter"):
 		post.toggle()
-	elif event.is_action_pressed("dummy_mode"):
+	elif event.is_action_pressed("dummy_mode") and mode == "sandbox":
 		dummy.cycle()
 
 
@@ -408,8 +670,10 @@ func _reload_data() -> void:
 	else:
 		cfg = new_cfg
 		world.cfg = cfg
-		fp_view._cfg = cfg
-		dummy_view._cfg = cfg
+		for v in fp_views:
+			v._cfg = cfg
+		for v in fighter_views:
+			v._cfg = cfg
 	var new_controls := DataLoader.load_json(CONTROLS_CFG)
 	if not new_controls.is_empty():
 		controls = new_controls
@@ -435,6 +699,9 @@ func _reload_data() -> void:
 func _open_pause() -> void:
 	paused = true
 	collector.set_process_input(false)   # sinon un clic dans le menu recapturerait la souris
+	Engine.time_scale = 1.0 if match_state != "ko" else 0.3
+	if pad:
+		pad.enabled = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	pause_menu = PauseMenu.new()
 	add_child(pause_menu)
@@ -457,4 +724,5 @@ func _on_pause_action(id: String) -> void:
 				options_menu.queue_free()
 				collector.sensitivity = float(Settings.get_value("sensitivity")))
 		"menu":
+			Engine.time_scale = 1.0
 			quit_to_menu.emit()

@@ -3,10 +3,13 @@ extends RefCounted
 ## Petites fonctions pour fabriquer des formes simples (graphismes placeholder).
 
 
+## Matériau "cel" (éclairage en 2 tons) : la DA du jeu, utilisée par tout le décor et les persos.
 static func mat(color: Color, emission: float = 0.0, roughness: float = 0.8) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
 	m.roughness = roughness
+	m.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+	m.specular_mode = BaseMaterial3D.SPECULAR_TOON
 	if emission > 0.0:
 		m.emission_enabled = true
 		m.emission = color

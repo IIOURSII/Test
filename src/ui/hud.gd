@@ -34,6 +34,11 @@ var bind_box: Control
 var bind_fill_me: ColorRect
 var bind_fill_them: ColorRect
 var potion_label: Label
+var names: Array = ["TOI", "MANNEQUIN"]
+var training: bool = true
+var round_labels: Array[Label] = []
+var message_label: Label
+var crosshair2: ColorRect
 
 var _history: Array = []        ## [{"dir": int, "btn": String, "n": int}, ...] le plus récent en premier
 var _shown_move: String = ""    ## dernier coup affiché (reste visible après la fin)
@@ -55,6 +60,20 @@ func setup() -> void:
 
 	_make_hp_bar(0, "TOI", -BAR_W - 20.0)
 	_make_hp_bar(1, "MANNEQUIN", 20.0)
+	for i in 2:
+		var rl := _make_label(22)
+		rl.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		rl.position = Vector2(-BAR_W - 20.0 - 70.0 if i == 0 else 20.0 + BAR_W + 12.0, 16)
+		add_child(rl)
+		round_labels.append(rl)
+	message_label = _make_label(18)
+	message_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	message_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	message_label.offset_top += 200
+	message_label.offset_bottom += 200
+	message_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.4))
+	add_child(message_label)
 
 	_cjk_font = SystemFont.new()
 	_cjk_font.font_names = PackedStringArray(["Yu Mincho", "MS Mincho", "Noto Serif CJK JP", "Hiragino Mincho ProN",
@@ -285,6 +304,34 @@ func _make_hp_bar(i: int, title: String, x_offset: float) -> void:
 	label.text = title
 
 
+## Noms affichés, écran partagé (2 viseurs), mode entraînement (aides debug).
+func configure(fighter_names: Array, split: bool, is_training: bool) -> void:
+	names = fighter_names
+	training = is_training
+	if split:
+		crosshair.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		crosshair2 = ColorRect.new()
+		crosshair2.color = crosshair.color
+		crosshair2.size = Vector2(4, 4)
+		add_child(crosshair2)
+		var vp := get_viewport().get_visible_rect().size
+		crosshair.position = Vector2(vp.x * 0.25 - 2, vp.y * 0.5 - 2)
+		crosshair2.position = Vector2(vp.x * 0.75 - 2, vp.y * 0.5 - 2)
+
+
+## Points de round sous forme de losanges (◆ gagné, ◇ à gagner).
+func set_rounds(score: Array, to_win: int) -> void:
+	for i in mini(round_labels.size(), score.size()):
+		var t := ""
+		for k in to_win:
+			t += "◆ " if k < int(score[i]) else "◇ "
+		round_labels[i].text = t.strip_edges() if not training else ""
+
+
+func message(text: String) -> void:
+	message_label.text = text
+
+
 ## Appelé à chaque tick avec les inputs du joueur (historique façon mode training).
 func record_input(frame: InputFrame) -> void:
 	var dir := MotionParser.dir_from_buttons(frame.buttons)
@@ -373,13 +420,14 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_m
 		var f := world.fighters[i]
 		var ratio := float(f.hp) / float(maxi(f.max_hp, 1))
 		hp_fill[i].size.x = (BAR_W - 4) * ratio
-		hp_text[i].text = "%s   %d / %d" % ["TOI" if i == 0 else "MANNEQUIN", f.hp, f.max_hp]
+		hp_text[i].text = "%s   %d / %d" % [str(names[i]) if i < names.size() else "?", f.hp, f.max_hp]
 		var gmax := float(world.cfg["guard"]["guard_max"])
 		var bmax := float(world.cfg["burst"]["gauge_max"])
 		guard_fill[i].size.x = BAR_W * clampf(float(f.guard_gauge) / gmax, 0.0, 1.0)
 		burst_fill[i].size.x = BAR_W * clampf(float(f.burst_gauge) / bmax, 0.0, 1.0)
 		burst_fill[i].color = Color(1.0, 0.85, 0.3) if f.burst_gauge >= int(bmax) else Color(0.6, 0.45, 0.15)
 	dummy_label.text = "Mannequin : %s   (F2 pour changer)" % dummy_mode
+	dummy_label.visible = training
 	_update_weapon_panel(p, moves)
 	potion_label.text = "Potion (R) : %d     Provocation : T" % p.potions_left
 	var d0 := world.fighters[1]
@@ -393,7 +441,8 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_m
 
 	crosshair.visible = mouse_captured
 	if mouse_captured:
-		hint_label.text = "Tab : liste des coups  |  F1 : debug  |  F2 : mannequin  |  F6 : recharger  |  F7 : filtre  |  Échap : pause"
+		hint_label.text = ("Tab : liste des coups  |  F1 : debug  |  F2 : mannequin  |  F6 : recharger  |  F7 : filtre  |  Échap : pause"
+				if training else "Tab : liste des coups  |  F7 : filtre  |  Échap : pause")
 	else:
 		hint_label.text = "Souris libérée : clique dans la fenêtre pour reprendre"
 

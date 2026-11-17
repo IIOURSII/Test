@@ -35,6 +35,7 @@ static func build(parent: Node3D, map: MapData) -> MapView:
 	var view := MapView.new()
 	parent.add_child(view)
 	view.setup(map)
+	view.add_child(InkOutline.create(1.0, 60.0))
 	_environment(view, th)
 	_floor(view, map, th)
 	_bounds(view, map, th)
@@ -129,6 +130,8 @@ static func _floor(parent: Node3D, map: MapData, th: Dictionary) -> void:
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = _floor_texture(cols[0], cols[1], th["pattern"])
 	m.roughness = 0.9
+	m.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+	m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 	var size := Vector2(map.half.x * 2.0, map.half.y * 2.0)
 	if map.bounds_type == "circle":
