@@ -40,15 +40,21 @@ func setup(cfg: Dictionary, color: Color, layer_bit: int = 1, accent: Color = Co
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.55, 0.52, 0.58)
+	env.ambient_light_color = Color(0.38, 0.36, 0.48)
 	env.ambient_light_energy = 1.0
 	var we := WorldEnvironment.new()
 	we.environment = env
 	_vp.add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.rotation = Vector3(deg_to_rad(-50), deg_to_rad(30), 0)
-	sun.light_energy = 1.1
+	sun.light_energy = 1.15
+	sun.light_color = Color(1.0, 0.88, 0.75)
 	_vp.add_child(sun)
+	var rim := DirectionalLight3D.new()
+	rim.rotation = Vector3(deg_to_rad(-15), deg_to_rad(200), 0)
+	rim.light_color = Color(0.35, 0.8, 1.0)
+	rim.light_energy = 1.4
+	_vp.add_child(rim)
 	puppet = Puppet.new()
 	_vp.add_child(puppet)
 	puppet.setup(color, accent, model)

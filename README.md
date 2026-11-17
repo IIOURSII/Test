@@ -91,7 +91,8 @@ src/app.gd   ← écrans et lancement des combats ; src/game.gd = un combat
 - [x] Étape 4 (en partie) : garde, parry parfait, guard break, jauge de garde, burst, counter-hit, scaling des combos, mannequin d'entraînement
 - [x] Étape 3 et 4 terminées : contre dos tourné, clash/bind, potion, provocation
 - [x] Duel contre l'IA (3 difficultés, rounds, intro, KO au ralenti), 1 contre 1 local en écran partagé
-- [x] DA : persos en sprites 2D 8 directions, cel-shading, contour encre partout
+- [x] DA : persos en sprites 2D 8 directions, cel-shading, contour encre partout ; ambiance « Dead Cells » (rayons de lumière dans la brume, contre-jour, particules, silhouettes lointaines, filtre Clair-obscur)
+- [x] Les 4 armes : Katana (Voie du sabre), Doubles Tantō (Danse des lames), Naginata (Ma-ai), Kanabō (Ikari)
 - [x] Menus (titre, armes + classe secondaire, maps, options, pause), 6 maps à thème + 1 de debug, filtres d'image au choix
 - [ ] Étape 5 : game feel (hitstop, shake, sons, intro, coup final)
 - [ ] Étape 6 : IA (barres de vie et liste de coups déjà là)

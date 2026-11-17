@@ -74,7 +74,13 @@ func setup(cfg: Dictionary, sleeve: Color = Color(0.22, 0.26, 0.45), accent: Col
 	avp.add_child(awe)
 	var asun := DirectionalLight3D.new()
 	asun.rotation = Vector3(deg_to_rad(-35), deg_to_rad(-40), 0)
+	asun.light_color = Color(1.0, 0.88, 0.75)
 	avp.add_child(asun)
+	var arim := DirectionalLight3D.new()
+	arim.rotation = Vector3(deg_to_rad(-10), deg_to_rad(160), 0)
+	arim.light_color = Color(0.35, 0.8, 1.0)
+	arim.light_energy = 1.2
+	avp.add_child(arim)
 	arms_camera = Camera3D.new()
 	arms_camera.fov = BASE_FOV
 	arms_camera.near = 0.03

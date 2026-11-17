@@ -1,7 +1,75 @@
 {
-  "_aide": "Styles du filtre. Le style choisi se règle dans le menu OPTIONS (ou 'preset' ci-dessous). F7 en jeu = filtre on/off, F6 = recharger. pixel_size = taille d'un gros pixel. use_palette = couleurs ramenées à la palette ci-dessous (avec tramage 'dither' entre les 2 plus proches). Sinon color_levels = nuances par canal.",
-  "preset": "estampe",
+  "_aide": "Styles du filtre. Le style choisi se règle dans le menu OPTIONS (ou 'preset' ci-dessous). F7 en jeu = filtre on/off, F6 = recharger. pixel_size = taille d'un gros pixel. use_palette = couleurs ramenées à la palette ci-dessous (avec tramage 'dither' entre les 2 plus proches). Sinon color_levels = nuances par canal. Chaque style peut avoir sa propre 'palette' et un virage (split_shadow / split_highlight / split_amount : teinte des ombres et des lumières).",
+  "preset": "clair_obscur",
   "presets": {
+    "clair_obscur": {
+      "label": "Clair-obscur",
+      "desc": "Style Dead Cells : couleurs vives, ombres froides, lumières chaudes, gros pixels.",
+      "retro": true,
+      "pixel_size": 4,
+      "use_palette": true,
+      "dither": 0.5,
+      "vignette": 0.65,
+      "grain": 0.02,
+      "saturation": 1.2,
+      "contrast": 1.15,
+      "brightness": 1.06,
+      "tint": [
+        1.0,
+        0.98,
+        0.95
+      ],
+      "shadow_tint": [
+        0.03,
+        0.03,
+        0.07
+      ],
+      "split_shadow": [
+        0.3,
+        0.5,
+        0.75
+      ],
+      "split_highlight": [
+        0.75,
+        0.6,
+        0.4
+      ],
+      "split_amount": 0.3,
+      "palette": [
+        "#0b0a14",
+        "#161427",
+        "#231f3d",
+        "#2f2b52",
+        "#3c3a6b",
+        "#1b2b3a",
+        "#21424f",
+        "#2a6366",
+        "#3c8f8a",
+        "#6fc7b8",
+        "#b8f0e0",
+        "#2b1a1a",
+        "#5a2323",
+        "#8f2f2a",
+        "#c9432f",
+        "#ee6b3b",
+        "#f7a24a",
+        "#ffd27a",
+        "#fff3c8",
+        "#3a2a1e",
+        "#6b4a30",
+        "#a3744a",
+        "#d8b28a",
+        "#2e3b22",
+        "#4f6b2f",
+        "#86a345",
+        "#5b2f6b",
+        "#a14fb0",
+        "#e08fd0",
+        "#7a7f94",
+        "#b9bccb",
+        "#eae6f0"
+      ]
+    },
     "estampe": {
       "label": "Estampe",
       "desc": "Palette chaude fixe, tramage léger, gros pixels nets.",

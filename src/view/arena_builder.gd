@@ -8,28 +8,28 @@ extends RefCounted
 const THEMES := {
 	"training": {"sky": [Color(0.06, 0.06, 0.12), Color(0.45, 0.22, 0.18)], "fog": Color(0.16, 0.1, 0.09), "fog_d": 0.035,
 		"sun": Color(1.0, 0.7, 0.5), "sun_e": 0.55, "sun_rot": Vector2(-40, 35), "amb": 0.45,
-		"floor": [Color(0.42, 0.33, 0.24), Color(0.36, 0.28, 0.2)], "pattern": "checker", "wall": Color(0.3, 0.18, 0.12)},
+		"floor": [Color(0.42, 0.33, 0.24), Color(0.36, 0.28, 0.2)], "pattern": "checker", "wall": Color(0.3, 0.18, 0.12), "rim": Color(0.3, 0.7, 0.95), "motes": "dust", "mote_col": Color(1.0, 0.8, 0.5), "far": Color(0.12, 0.1, 0.18)},
 	"colisee": {"sky": [Color(0.25, 0.4, 0.62), Color(0.95, 0.75, 0.5)], "fog": Color(0.6, 0.48, 0.36), "fog_d": 0.012,
 		"sun": Color(1.0, 0.88, 0.7), "sun_e": 1.2, "sun_rot": Vector2(-50, 30), "amb": 0.55,
-		"floor": [Color(0.78, 0.66, 0.46), Color(0.72, 0.6, 0.41)], "pattern": "sand", "wall": Color(0.62, 0.55, 0.45)},
+		"floor": [Color(0.78, 0.66, 0.46), Color(0.72, 0.6, 0.41)], "pattern": "sand", "wall": Color(0.62, 0.55, 0.45), "rim": Color(0.4, 0.6, 1.0), "motes": "dust", "mote_col": Color(1.0, 0.85, 0.5), "far": Color(0.3, 0.26, 0.38)},
 	"western": {"sky": [Color(0.3, 0.55, 0.85), Color(1.0, 0.8, 0.55)], "fog": Color(0.85, 0.65, 0.45), "fog_d": 0.015,
 		"sun": Color(1.0, 0.93, 0.78), "sun_e": 1.4, "sun_rot": Vector2(-72, 20), "amb": 0.6,
-		"floor": [Color(0.72, 0.55, 0.36), Color(0.66, 0.5, 0.32)], "pattern": "sand", "wall": Color(0.45, 0.3, 0.18)},
+		"floor": [Color(0.72, 0.55, 0.36), Color(0.66, 0.5, 0.32)], "pattern": "sand", "wall": Color(0.45, 0.3, 0.18), "rim": Color(0.5, 0.7, 1.0), "motes": "dust", "mote_col": Color(1.0, 0.85, 0.6), "far": Color(0.55, 0.32, 0.25)},
 	"japon": {"sky": [Color(0.18, 0.15, 0.3), Color(0.98, 0.6, 0.5)], "fog": Color(0.55, 0.38, 0.4), "fog_d": 0.02,
 		"sun": Color(1.0, 0.72, 0.6), "sun_e": 0.8, "sun_rot": Vector2(-22, 140), "amb": 0.5,
-		"floor": [Color(0.66, 0.64, 0.6), Color(0.6, 0.58, 0.55)], "pattern": "gravel", "wall": Color(0.88, 0.85, 0.78)},
+		"floor": [Color(0.66, 0.64, 0.6), Color(0.6, 0.58, 0.55)], "pattern": "gravel", "wall": Color(0.88, 0.85, 0.78), "rim": Color(0.65, 0.4, 0.95), "motes": "petals", "mote_col": Color(1.0, 0.7, 0.82), "far": Color(0.22, 0.14, 0.3)},
 	"volcan": {"sky": [Color(0.06, 0.02, 0.02), Color(0.5, 0.12, 0.04)], "fog": Color(0.25, 0.07, 0.03), "fog_d": 0.04,
 		"sun": Color(1.0, 0.4, 0.2), "sun_e": 0.35, "sun_rot": Vector2(-60, 10), "amb": 0.35,
-		"floor": [Color(0.16, 0.12, 0.11), Color(0.12, 0.09, 0.09)], "pattern": "stone", "wall": Color(0.12, 0.08, 0.07)},
+		"floor": [Color(0.16, 0.12, 0.11), Color(0.12, 0.09, 0.09)], "pattern": "stone", "wall": Color(0.12, 0.08, 0.07), "rim": Color(0.25, 0.55, 0.9), "motes": "embers", "mote_col": Color(1.0, 0.5, 0.12), "far": Color(0.12, 0.04, 0.04)},
 	"banque": {"sky": [Color(0.02, 0.02, 0.03), Color(0.06, 0.05, 0.04)], "fog": Color(0.08, 0.06, 0.03), "fog_d": 0.03,
 		"sun": Color(1.0, 0.75, 0.4), "sun_e": 0.25, "sun_rot": Vector2(-80, 0), "amb": 0.25,
-		"floor": [Color(0.24, 0.22, 0.2), Color(0.2, 0.18, 0.17)], "pattern": "tiles", "wall": Color(0.2, 0.19, 0.18)},
+		"floor": [Color(0.24, 0.22, 0.2), Color(0.2, 0.18, 0.17)], "pattern": "tiles", "wall": Color(0.2, 0.19, 0.18), "rim": Color(0.2, 0.85, 0.75), "motes": "gold", "mote_col": Color(1.0, 0.85, 0.35), "far": Color(0.05, 0.05, 0.06)},
 	"fachwerk": {"sky": [Color(0.35, 0.42, 0.55), Color(0.85, 0.72, 0.6)], "fog": Color(0.55, 0.52, 0.5), "fog_d": 0.018,
 		"sun": Color(1.0, 0.86, 0.7), "sun_e": 0.9, "sun_rot": Vector2(-38, 70), "amb": 0.55,
-		"floor": [Color(0.45, 0.43, 0.4), Color(0.36, 0.34, 0.32)], "pattern": "cobble", "wall": Color(0.4, 0.3, 0.22)},
+		"floor": [Color(0.45, 0.43, 0.4), Color(0.36, 0.34, 0.32)], "pattern": "cobble", "wall": Color(0.4, 0.3, 0.22), "rim": Color(0.3, 0.75, 0.9), "motes": "fireflies", "mote_col": Color(1.0, 0.9, 0.45), "far": Color(0.14, 0.16, 0.26)},
 	"chateau": {"sky": [Color(0.04, 0.05, 0.08), Color(0.12, 0.14, 0.2)], "fog": Color(0.07, 0.08, 0.12), "fog_d": 0.025,
 		"sun": Color(0.7, 0.8, 1.0), "sun_e": 0.3, "sun_rot": Vector2(-55, 60), "amb": 0.3,
-		"floor": [Color(0.38, 0.37, 0.36), Color(0.32, 0.31, 0.3)], "pattern": "tiles", "wall": Color(0.33, 0.31, 0.3)},
+		"floor": [Color(0.38, 0.37, 0.36), Color(0.32, 0.31, 0.3)], "pattern": "tiles", "wall": Color(0.33, 0.31, 0.3), "rim": Color(0.35, 0.55, 1.0), "motes": "dust", "mote_col": Color(0.7, 0.8, 1.0), "far": Color(0.06, 0.06, 0.1)},
 }
 
 
@@ -48,6 +48,9 @@ static func build(parent: Node3D, map: MapData) -> MapView:
 		_zone(view, z)
 	for g in map.geysers:
 		view.add_geyser(g)
+	_ambient_motes(view, map, th)
+	if not ["banque", "chateau"].has(map.theme):
+		_silhouettes(view, map, th)
 	match map.theme:
 		"training": _decor_training(view, map)
 		"colisee": _decor_colisee(view, map)
@@ -77,12 +80,23 @@ static func _environment(parent: Node3D, th: Dictionary) -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = float(th["amb"])
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	# Ambiance "Dead Cells" : bloom marqué, rayons de lumière dans la brume, couleurs saturées.
 	env.glow_enabled = true
-	env.glow_intensity = 1.0
+	env.glow_intensity = 1.3
+	env.glow_bloom = 0.12
+	env.glow_hdr_threshold = 0.85
 	env.fog_enabled = true
 	env.fog_light_color = th["fog"]
-	env.fog_density = float(th["fog_d"])
+	env.fog_density = float(th["fog_d"]) * 0.7
 	env.fog_sky_affect = 0.5
+	env.volumetric_fog_enabled = true
+	env.volumetric_fog_density = float(th["fog_d"]) * 0.9
+	env.volumetric_fog_albedo = th["fog"]
+	env.volumetric_fog_emission = (th["fog"] as Color) * 0.04
+	env.volumetric_fog_anisotropy = 0.6
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.12
+	env.adjustment_saturation = 1.2
 	var we := WorldEnvironment.new()
 	we.environment = env
 	parent.add_child(we)
@@ -93,6 +107,13 @@ static func _environment(parent: Node3D, th: Dictionary) -> void:
 	var rot: Vector2 = th["sun_rot"]
 	sun.rotation = Vector3(deg_to_rad(rot.x), deg_to_rad(rot.y), 0)
 	parent.add_child(sun)
+	# Lumière de contre-jour froide : découpe les silhouettes (le "rim light" de Dead Cells).
+	var rim := DirectionalLight3D.new()
+	rim.light_color = th.get("rim", Color(0.3, 0.7, 0.95))
+	rim.light_energy = 0.7
+	rim.rotation = Vector3(deg_to_rad(-20.0), deg_to_rad(rot.y + 180.0), 0)
+	rim.light_volumetric_fog_energy = 0.4
+	parent.add_child(rim)
 
 
 ## Texture de sol procédurale (petite, filtrée "nearest" = pixel art).
@@ -307,10 +328,96 @@ static func _add(parent: Node3D, n: Node3D, pos: Vector3) -> Node3D:
 static func _light(parent: Node3D, pos: Vector3, col: Color, energy: float, rng: float) -> void:
 	var l := OmniLight3D.new()
 	l.light_color = col
-	l.light_energy = energy
-	l.omni_range = rng
+	l.light_energy = energy * 1.3
+	l.omni_range = rng * 1.15
+	l.light_volumetric_fog_energy = 2.0     # rayons de lumière dans la brume
+	l.set_meta("flicker", l.light_energy)   # les flammes vacillent (MapView)
 	l.position = pos
 	parent.add_child(l)
+
+
+## Particules qui flottent dans l'air : poussière, braises, pétales, poudre d'or, lucioles.
+static func _ambient_motes(p: Node3D, map: MapData, th: Dictionary) -> void:
+	var kind := str(th.get("motes", "dust"))
+	var col: Color = th.get("mote_col", Color(1, 0.85, 0.5))
+	var ext := Vector3(map.half.x, 3.0, map.half.y)
+	if map.bounds_type == "circle":
+		ext = Vector3(map.radius, 3.0, map.radius)
+	var pt := CPUParticles3D.new()
+	pt.amount = 220 if kind != "fireflies" else 90
+	pt.lifetime = 9.0
+	pt.preprocess = 9.0
+	pt.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	pt.emission_box_extents = ext
+	pt.position = Vector3(0, 3.2, 0)
+	pt.spread = 180.0
+	pt.initial_velocity_min = 0.05
+	pt.initial_velocity_max = 0.35
+	pt.gravity = Vector3(0.15, -0.05, 0.05)
+	var size := 0.035
+	match kind:
+		"embers":
+			pt.gravity = Vector3(0.1, 0.45, 0.0)
+			size = 0.045
+		"petals":
+			pt.gravity = Vector3(0.35, -0.3, 0.1)
+			pt.angular_velocity_min = -180.0
+			pt.angular_velocity_max = 180.0
+			size = 0.07
+		"gold":
+			pt.gravity = Vector3(0.0, -0.08, 0.0)
+			size = 0.03
+		"fireflies":
+			pt.gravity = Vector3(0.0, 0.05, 0.0)
+			pt.initial_velocity_max = 0.6
+			size = 0.05
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(size, size * (0.35 if kind == "petals" else 1.0), size)
+	pt.mesh = mesh
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES if kind != "petals" else BaseMaterial3D.BILLBOARD_DISABLED
+	pt.material_override = m
+	var g := Gradient.new()
+	var glow := 2.2 if kind in ["embers", "fireflies", "gold"] else 1.2
+	g.colors = PackedColorArray([Color(col.r * glow, col.g * glow, col.b * glow, 0.0), Color(col.r * glow, col.g * glow, col.b * glow, 0.9), Color(col.r, col.g, col.b, 0.0)])
+	g.offsets = PackedFloat32Array([0.0, 0.2, 1.0])
+	pt.color_ramp = g
+	pt.scale_amount_min = 0.6
+	pt.scale_amount_max = 1.6
+	p.add_child(pt)
+
+
+## Silhouettes lointaines sur plusieurs plans, noyées dans la brume : la profondeur des fonds de Dead Cells.
+static func _silhouettes(p: Node3D, map: MapData, th: Dictionary) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77 + map.id.hash() % 1000
+	var base: Color = th.get("far", Color(0.12, 0.1, 0.18))
+	var spire_col := base.darkened(0.2)
+	for layer in 3:
+		var dist := 55.0 + layer * 32.0
+		var n := 16 + layer * 4
+		var col := base.lerp(th["fog"], 0.25 * layer)
+		for k in n:
+			var a := TAU * (float(k) + rng.randf() * 0.6) / float(n)
+			var w := rng.randf_range(5.0, 12.0) * (1.0 + layer * 0.4)
+			var h := rng.randf_range(10.0, 32.0) * (1.0 + layer * 0.35)
+			var pos := Vector3(cos(a) * dist, h * 0.5 - 1.0, sin(a) * dist)
+			var tower := MeshUtil.box(Vector3(w, h, w * 0.8), col)
+			tower.rotation.y = -a
+			_add(p, tower, pos)
+			if rng.randf() < 0.5:
+				var spire := MeshUtil.cylinder(0.0, h * 0.35, spire_col)
+				(spire.mesh as CylinderMesh).bottom_radius = w * 0.45
+				_add(p, spire, Vector3(pos.x, h - 1.0 + h * 0.17, pos.z))
+			if layer == 0 and rng.randf() < 0.6:
+				for wv in rng.randi_range(1, 3):
+					var win := MeshUtil.box(Vector3(0.9, 1.3, 0.2), Color(1.0, 0.7, 0.35), 4.0)
+					var off := Vector3(rng.randf_range(-w * 0.3, w * 0.3), rng.randf_range(-h * 0.2, h * 0.35), 0)
+					var inward := -Vector3(cos(a), 0, sin(a))
+					_add(p, win, pos + off + inward * (w * 0.42))
 
 
 # ------------------------------------------------------------ décors par thème

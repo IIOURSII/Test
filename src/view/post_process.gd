@@ -47,10 +47,13 @@ func apply(gfx: Dictionary, preset: String = "") -> void:
 	mat.set_shader_parameter("brightness", float(p.get("brightness", 1.0)))
 	mat.set_shader_parameter("tint", _color(p.get("tint", [1, 1, 1])))
 	mat.set_shader_parameter("shadow_tint", _color(p.get("shadow_tint", [0, 0, 0])))
+	mat.set_shader_parameter("split_shadow", _color(p.get("split_shadow", [0.5, 0.5, 0.5])))
+	mat.set_shader_parameter("split_highlight", _color(p.get("split_highlight", [0.5, 0.5, 0.5])))
+	mat.set_shader_parameter("split_amount", float(p.get("split_amount", 0.0)))
 	var use_pal := bool(p.get("use_palette", false))
 	mat.set_shader_parameter("use_palette", 1.0 if use_pal else 0.0)
 	if use_pal:
-		_set_palette(gfx.get("palette", []))
+		_set_palette(p.get("palette", gfx.get("palette", [])))
 	_refresh()
 
 

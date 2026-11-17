@@ -3,8 +3,10 @@ extends RefCounted
 ## Réglages du joueur, sauvegardés dans user://settings.json (filtre, sensibilité, volume, derniers choix).
 
 const PATH := "user://settings.json"
+const VERSION := 2
 const DEFAULTS := {
-	"filter": "estampe",
+	"version": VERSION,
+	"filter": "clair_obscur",
 	"sensitivity": 0.0025,
 	"volume": 0.8,
 	"weapon": "katana",
@@ -23,6 +25,11 @@ static func load_settings() -> void:
 			var parsed = JSON.parse_string(f.get_as_text())
 			if parsed is Dictionary:
 				data.merge(parsed, true)
+	# Nouvelle version des réglages : on passe au nouveau style d'image par défaut.
+	if int(data.get("version", 1)) < VERSION:
+		data["filter"] = DEFAULTS["filter"]
+		data["version"] = VERSION
+		save()
 	apply_audio()
 
 

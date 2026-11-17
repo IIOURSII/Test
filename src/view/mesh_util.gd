@@ -10,6 +10,10 @@ static func mat(color: Color, emission: float = 0.0, roughness: float = 0.8) -> 
 	m.roughness = roughness
 	m.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
 	m.specular_mode = BaseMaterial3D.SPECULAR_TOON
+	# Liseré lumineux sur les bords éclairés en contre-jour (look Dead Cells).
+	m.rim_enabled = true
+	m.rim = 0.35
+	m.rim_tint = 0.7
 	if emission > 0.0:
 		m.emission_enabled = true
 		m.emission = color

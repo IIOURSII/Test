@@ -16,6 +16,9 @@ uniform float contrast = 1.12;
 uniform float brightness = 1.0;
 uniform vec3 tint = vec3(1.0, 0.92, 0.82);
 uniform vec3 shadow_tint = vec3(0.05, 0.04, 0.07);
+uniform vec3 split_shadow = vec3(0.5);
+uniform vec3 split_highlight = vec3(0.5);
+uniform float split_amount = 0.0;
 uniform float use_palette = 0.0;
 uniform sampler2D palette_tex : filter_nearest;
 uniform int palette_size = 0;
@@ -65,6 +68,8 @@ void fragment() {
 	c = (c - 0.5) * contrast + 0.5;
 	c *= tint * brightness;
 	c = max(c, shadow_tint * (1.0 - l));
+	// Virage partiel : ombres froides, lumières chaudes (le clair-obscur de Dead Cells).
+	c += (split_shadow - 0.5) * (1.0 - l) * split_amount + (split_highlight - 0.5) * l * split_amount;
 
 	// Lignes de vitesse radiales (style manga).
 	if (speed_lines > 0.001) {

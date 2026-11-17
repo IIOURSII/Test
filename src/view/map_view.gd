@@ -5,10 +5,19 @@ extends Node3D
 
 var map: MapData
 var _geysers: Array = []   ## [{"data", "crater_mat", "column", "light", "smoke"}]
+var _flicker: Array = []   ## lumières de flammes qui vacillent
+var _flicker_ready: bool = false
 
 
 func setup(m: MapData) -> void:
 	map = m
+
+
+func _collect_flicker(n: Node) -> void:
+	for c in n.get_children():
+		if c is OmniLight3D and c.has_meta("flicker"):
+			_flicker.append(c)
+		_collect_flicker(c)
 
 
 func add_geyser(g: Dictionary) -> void:
@@ -35,6 +44,14 @@ func add_geyser(g: Dictionary) -> void:
 ## tick = tick de simulation (avec fraction pour l'animation).
 func update_tick(tick: float) -> void:
 	var t := int(tick)
+	if not _flicker_ready:
+		_flicker_ready = true
+		_collect_flicker(self)
+	for i in _flicker.size():
+		var l: OmniLight3D = _flicker[i]
+		var base: float = l.get_meta("flicker")
+		var n := sin(tick * 0.21 + i * 1.7) * 0.5 + sin(tick * 0.53 + i * 0.9) * 0.3 + sin(tick * 1.37 + i * 2.3) * 0.2
+		l.light_energy = base * (0.88 + 0.12 * n)
 	for e in _geysers:
 		var g: Dictionary = e["data"]
 		var st := map.geyser_state(g, t)
