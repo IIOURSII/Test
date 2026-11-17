@@ -4,7 +4,7 @@ extends RefCounted
 ## Rien de visuel ici : seulement des données qu'on peut copier/restaurer
 ## (indispensable pour le rollback netcode plus tard).
 
-enum Action { NONE, DASH, GUARD_SWITCH, ATTACK, HITSTUN }
+enum Action { NONE, DASH, GUARD_SWITCH, ATTACK, HITSTUN, BLOCK, BLOCKSTUN, PARRIED }
 
 const GUARD_RIGHT := 1
 const GUARD_LEFT := -1
@@ -51,6 +51,15 @@ var last_combo_damage: int = 0
 var last_advantage: int = 0   ## avantage (en ticks) du dernier coup qu'on a placé
 var has_advantage_info: bool = false
 
+# --- Défense ---
+var parry_timer: int = 0      ## > 0 : un parry parfait est possible
+var parry_lockout: int = 0    ## > 0 : impossible de retenter un parry
+var guard_gauge: int = 0      ## pleine = garde brisée
+var guard_idle: int = 0
+var burst_gauge: int = 1000
+var burst_buffer: int = 0
+var last_adv_on_block: bool = false
+
 var prev_buttons: int = 0
 
 
@@ -90,6 +99,13 @@ func copy() -> FighterState:
 	c.last_combo_damage = last_combo_damage
 	c.last_advantage = last_advantage
 	c.has_advantage_info = has_advantage_info
+	c.parry_timer = parry_timer
+	c.parry_lockout = parry_lockout
+	c.guard_gauge = guard_gauge
+	c.guard_idle = guard_idle
+	c.burst_gauge = burst_gauge
+	c.burst_buffer = burst_buffer
+	c.last_adv_on_block = last_adv_on_block
 	c.prev_buttons = prev_buttons
 	return c
 
@@ -112,3 +128,13 @@ func right() -> Vector3:
 
 func action_name() -> String:
 	return Action.keys()[action]
+
+
+func is_crouching() -> bool:
+	return crouch > 3
+
+
+## Peut-il se défendre (garde / parry) ?
+func can_defend() -> bool:
+	return action == Action.NONE or action == Action.BLOCK or action == Action.BLOCKSTUN \
+			or action == Action.GUARD_SWITCH

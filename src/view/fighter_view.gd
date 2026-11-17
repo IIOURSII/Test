@@ -11,6 +11,8 @@ var _head_mat: StandardMaterial3D
 var _cfg: Dictionary
 var _flash: float = 0.0
 var _recoil: float = 0.0
+var _pose: Array = []
+var _flash_color: Color = Color.WHITE
 
 
 func setup(cfg: Dictionary, color: Color) -> void:
@@ -34,9 +36,13 @@ func setup(cfg: Dictionary, color: Color) -> void:
 
 
 ## Flash blanc quand il est touché.
-func flash(power: float = 1.0) -> void:
+func flash(power: float = 1.0, color: Color = Color.WHITE, recoil: bool = true) -> void:
 	_flash = 1.0
-	_recoil = maxf(_recoil, 0.6 + 0.6 * power)
+	_flash_color = color
+	_body_mat.emission = color
+	_head_mat.emission = color
+	if recoil:
+		_recoil = maxf(_recoil, 0.6 + 0.6 * power)
 
 
 func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: float, moves: MoveSet) -> void:
@@ -69,7 +75,9 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: flo
 		var t := float(cur.move_tick) + (0.0 if frozen else alpha)
 		pose = WeaponAnim.pose_for_move(moves.get_move(cur.move_id), t, side)
 	else:
-		pose = WeaponAnim.mirror(WeaponAnim.POSES["rest"], side)
+		var target := WeaponAnim.state_pose(cur)
+		pose = target if _pose.is_empty() else WeaponAnim.lerp_pose(_pose, target, 1.0 - exp(-delta * 30.0))
+	_pose = pose
 	var grip: Vector3 = pose[0]
 	katana.transform = Transform3D(WeaponAnim.basis_from_dir(pose[1]), Vector3(0, h - 0.25, 0) + grip * 1.2)
 

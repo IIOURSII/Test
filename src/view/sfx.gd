@@ -23,6 +23,8 @@ func setup() -> void:
 	_streams["hit_heavy"] = _hit(0.7, 80.0, 30.0, 6.0, 1.0)
 	_streams["thock"] = _thock()
 	_streams["shing"] = _shing(0.45)
+	_streams["clang"] = _shing(0.3, 0.62)
+	_streams["parry"] = _shing(0.9, 0.85)
 	for i in VOICES:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
@@ -104,7 +106,7 @@ func _thock() -> AudioStreamWAV:
 
 
 ## "Shing" métallique (changement de garde ; servira aussi au parry et au clash).
-func _shing(dur: float) -> AudioStreamWAV:
+func _shing(dur: float, pitch: float = 1.0) -> AudioStreamWAV:
 	var n := int(dur * SR)
 	var out := PackedFloat32Array()
 	out.resize(n)
@@ -114,7 +116,7 @@ func _shing(dur: float) -> AudioStreamWAV:
 		var t := float(i) / SR
 		var s := 0.0
 		for p in partials:
-			s += sin(TAU * float(p[0]) * t) * exp(-t * float(p[1])) * float(p[2])
+			s += sin(TAU * float(p[0]) * pitch * t) * exp(-t * float(p[1])) * float(p[2])
 		var x := _rng.randf_range(-1.0, 1.0)
 		hp += _coef(3000.0) * (x - hp)
 		var scrape := (x - hp) * exp(-t * 30.0)

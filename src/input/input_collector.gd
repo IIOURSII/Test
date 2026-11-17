@@ -4,7 +4,7 @@ extends Node
 
 const GAME_ACTIONS := [
 	"forward", "back", "left", "right", "jump", "crouch", "dash",
-	"blade", "pommel", "parry", "guard_switch", "potion", "taunt",
+	"blade", "pommel", "parry", "guard_switch", "potion", "taunt", "burst",
 ]
 const MAX_PITCH := 1.45
 

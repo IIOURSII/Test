@@ -28,10 +28,27 @@ func impact(pos: Vector3, dir: Vector3, power: float, kind: String) -> void:
 		_burst(pos, dir, int(5 + 10 * power), 0.5, 2.0, 5.0,
 				[Color(0.7, 0.02, 0.02, 1), Color(0.45, 0.0, 0.0, 0)], 35.0, 1.8)
 		_flash(pos, Color(1.0, 0.85, 0.6), 0.5 + 0.5 * power)
+	elif kind == "block":
+		# Métal contre métal : étincelles blanc-bleu, pas de sang.
+		_burst(pos, -dir, int(14 + 20 * power), 0.25, 4.0, 10.0,
+				[Color(1, 1, 1, 1), Color(0.6, 0.8, 1.0, 1), Color(0.3, 0.5, 1.0, 0)], 70.0, 0.9)
+		_flash(pos, Color(0.7, 0.85, 1.0), 0.35 + 0.3 * power)
+	elif kind == "parry":
+		# Gros feu d'artifice doré.
+		_burst(pos, -dir, 70, 0.45, 6.0, 16.0,
+				[Color(1, 1, 1, 1), Color(1.0, 0.85, 0.3, 1), Color(1.0, 0.5, 0.1, 0)], 110.0, 1.3)
+		_flash(pos, Color(1.0, 0.85, 0.4), 1.6)
 	else:
 		_burst(pos, dir, int(10 + 12 * power), 0.3, 2.0, 6.0,
 				[Color(1, 1, 0.9, 0.8), Color(0.7, 0.65, 0.55, 0)], 80.0, 1.4)
 		_flash(pos, Color(1.0, 1.0, 0.9), 0.35 + 0.3 * power)
+
+
+## Onde du Burst : grosse sphère dorée qui s'étend.
+func burst_wave(pos: Vector3) -> void:
+	_flash(pos, Color(1.0, 0.8, 0.3), 2.6)
+	_burst(pos, Vector3.UP, 60, 0.5, 5.0, 12.0,
+			[Color(1, 1, 0.8, 1), Color(1.0, 0.7, 0.2, 0)], 180.0, 1.2)
 
 
 func _burst(pos: Vector3, dir: Vector3, amount: int, life: float, vmin: float, vmax: float,

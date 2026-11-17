@@ -9,6 +9,7 @@ const CROUCH_TICKS := 6
 
 static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveSet) -> void:
 	var mv: Dictionary = cfg["movement"]
+	var gd: Dictionary = cfg["guard"]
 	var held: int = inp.buttons
 	var pressed: int = held & ~f.prev_buttons
 
@@ -17,23 +18,25 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 	f.local_tick += 1
 
 	# Le buffer continue d'enregistrer même pendant le hitstop.
-	if f.action != FighterState.Action.HITSTUN:
+	var stunned := f.action == FighterState.Action.HITSTUN or f.action == FighterState.Action.PARRIED
+	if not stunned:
 		MotionParser.record(f, held)
 		_record_attack_press(f, pressed, cfg, moves)
+	if pressed & InputFrame.PARRY:
+		_try_parry_press(f, gd)
+	if pressed & InputFrame.BURST:
+		f.burst_buffer = 8
 	f.prev_buttons = held
 
 	if f.hitstop > 0:
 		f.hitstop -= 1
 		return
 
-	if f.pending_move != "":
-		f.pending_age += 1
-	if f.dash_cooldown > 0:
-		f.dash_cooldown -= 1
-	f.ticks_since_hit += 1
+	_tick_timers(f, cfg)
 
-	# --- Accroupi (seulement au sol, en mouvement libre) ---
-	var free_state := f.action == FighterState.Action.NONE or f.action == FighterState.Action.GUARD_SWITCH
+	# --- Accroupi (au sol, en mouvement libre ou en garde) ---
+	var free_state := f.action == FighterState.Action.NONE or f.action == FighterState.Action.GUARD_SWITCH \
+			or f.action == FighterState.Action.BLOCK or f.action == FighterState.Action.BLOCKSTUN
 	if (held & InputFrame.CROUCH) != 0 and f.on_ground and free_state:
 		f.crouch = mini(f.crouch + 1, CROUCH_TICKS)
 	else:
@@ -45,18 +48,103 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 		_step_attack(f, cfg, moves, wish)
 	if f.action == FighterState.Action.HITSTUN:
 		_step_hitstun(f, mv)
+		_try_burst(f, cfg, moves)
+	if f.action == FighterState.Action.PARRIED:
+		_step_stun_simple(f, mv, FighterState.Action.NONE)
+	if f.action == FighterState.Action.BLOCKSTUN:
+		var after := FighterState.Action.BLOCK if (held & InputFrame.PARRY) else FighterState.Action.NONE
+		_step_stun_simple(f, mv, after)
 	if f.action == FighterState.Action.DASH:
 		_step_dash(f, mv)
-	elif f.action == FighterState.Action.NONE or f.action == FighterState.Action.GUARD_SWITCH:
+	elif f.action == FighterState.Action.NONE or f.action == FighterState.Action.GUARD_SWITCH \
+			or f.action == FighterState.Action.BLOCK:
 		if f.action == FighterState.Action.GUARD_SWITCH:
 			_step_guard_switch(f, cfg)
-		_step_walk(f, mv, wish)
-		_try_jump(f, mv, pressed)
-		_try_dash(f, mv, held, pressed, wish)
-		_try_guard_switch(f, pressed)
+		_update_block(f, held)
+		var speed_mult := 1.0
+		if f.action == FighterState.Action.BLOCK:
+			speed_mult = float(gd["walk_speed"]) / maxf(float(mv["walk_speed"]), 0.01)
+		_step_walk(f, mv, wish, speed_mult)
+		if f.action != FighterState.Action.BLOCK:
+			_try_jump(f, mv, pressed)
+			_try_dash(f, mv, held, pressed, wish)
+			_try_guard_switch(f, pressed)
 
 	_try_start_attack(f, cfg, moves, wish)
 	_integrate(f, mv)
+
+
+static func _tick_timers(f: FighterState, cfg: Dictionary) -> void:
+	var gd: Dictionary = cfg["guard"]
+	var bd: Dictionary = cfg["burst"]
+	if f.pending_move != "":
+		f.pending_age += 1
+	if f.dash_cooldown > 0:
+		f.dash_cooldown -= 1
+	if f.parry_timer > 0:
+		f.parry_timer -= 1
+	if f.parry_lockout > 0:
+		f.parry_lockout -= 1
+	if f.burst_buffer > 0:
+		f.burst_buffer -= 1
+	f.ticks_since_hit += 1
+	f.burst_gauge = mini(f.burst_gauge + int(bd["gauge_regen"]), int(bd["gauge_max"]))
+	if f.action == FighterState.Action.BLOCK or f.action == FighterState.Action.BLOCKSTUN:
+		f.guard_idle = 0
+	else:
+		f.guard_idle += 1
+		if f.guard_idle > int(gd["guard_regen_delay"]):
+			f.guard_gauge = maxi(f.guard_gauge - int(gd["guard_regen"]), 0)
+
+
+# ---------------------------------------------------------------- Défense
+
+## Appui sur E : ouvre la fenêtre de parry (sauf si on vient d'en rater un : anti-spam).
+static func _try_parry_press(f: FighterState, gd: Dictionary) -> void:
+	if f.parry_lockout > 0 or not f.can_defend():
+		return
+	f.parry_timer = int(gd["parry_window"]) + 1
+	f.parry_lockout = int(gd["parry_lockout"])
+
+
+## Maintenir E = garde.
+static func _update_block(f: FighterState, held: int) -> void:
+	var holding := (held & InputFrame.PARRY) != 0
+	if f.action == FighterState.Action.NONE and holding:
+		f.action = FighterState.Action.BLOCK
+		f.action_tick = 0
+	elif f.action == FighterState.Action.BLOCK and not holding:
+		f.action = FighterState.Action.NONE
+		f.action_tick = 0
+
+
+static func _step_stun_simple(f: FighterState, mv: Dictionary, after: int) -> void:
+	if f.hitstun > 0:
+		f.hitstun -= 1
+	if f.on_ground:
+		var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(mv["ground_accel"]) * 0.6 * DT)
+		f.vel.x = hv.x
+		f.vel.z = hv.z
+	if f.hitstun <= 0:
+		f.action = after
+		f.action_tick = 0
+
+
+## Burst : seulement pendant qu'on encaisse, jauge pleine.
+static func _try_burst(f: FighterState, cfg: Dictionary, moves: MoveSet) -> void:
+	if f.action != FighterState.Action.HITSTUN or f.burst_buffer <= 0:
+		return
+	if f.burst_gauge < int(cfg["burst"]["gauge_max"]) or not moves.has_move("burst"):
+		return
+	f.burst_gauge = 0
+	f.burst_buffer = 0
+	f.hitstun = 0
+	f.last_combo_hits = f.combo_hits
+	f.last_combo_damage = f.combo_damage
+	f.combo_hits = 0
+	f.combo_damage = 0
+	f.vel = Vector3(0, minf(f.vel.y, 0.0), 0)
+	start_move(f, "burst", moves, cfg, Vector3.ZERO)
 
 
 ## Direction de déplacement voulue (monde, à plat, normalisée).
@@ -107,7 +195,7 @@ static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, 
 		_clear_pending(f)
 		return
 	var next_id := f.pending_move
-	var allowed := f.action == FighterState.Action.NONE
+	var allowed := f.action == FighterState.Action.NONE or f.action == FighterState.Action.BLOCK
 	if f.action == FighterState.Action.ATTACK:
 		var cur := moves.get_move(f.move_id)
 		if not cur.is_empty():
@@ -235,9 +323,9 @@ static func _step_hitstun(f: FighterState, mv: Dictionary) -> void:
 
 # ---------------------------------------------------------------- Déplacement
 
-static func _step_walk(f: FighterState, mv: Dictionary, wish: Vector3) -> void:
+static func _step_walk(f: FighterState, mv: Dictionary, wish: Vector3, speed_mult: float = 1.0) -> void:
 	var crouched := f.crouch > CROUCH_TICKS / 2
-	var speed: float = mv["crouch_speed"] if crouched else mv["walk_speed"]
+	var speed: float = (mv["crouch_speed"] if crouched else mv["walk_speed"]) * speed_mult
 	var hv := Vector3(f.vel.x, 0.0, f.vel.z)
 	if f.on_ground:
 		hv = hv.move_toward(wish * speed, float(mv["ground_accel"]) * DT)

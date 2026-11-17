@@ -17,6 +17,7 @@ const PARRY := 1 << 9
 const GUARD := 1 << 10
 const POTION := 1 << 11
 const TAUNT := 1 << 12
+const BURST := 1 << 13
 
 const DIR_MASK := FORWARD | BACK | LEFT | RIGHT
 
@@ -35,6 +36,7 @@ const ACTION_BITS := {
 	"guard_switch": GUARD,
 	"potion": POTION,
 	"taunt": TAUNT,
+	"burst": BURST,
 }
 
 ## Les angles sont stockés en entiers (1/10000 de radian) pour rester

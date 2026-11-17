@@ -21,7 +21,11 @@ FPS de mêlée « Japon médiéval fantasy ». Phase 1 en cours.
 | Dash | Shift + direction |
 | Changer de garde | A |
 | Lame / Pommeau | Clic gauche / Clic droit |
-| Parry / Potion / Provocation | E / R / T *(étape 4)* |
+| Garde (maintenir) / Parry (appui au bon moment) | E |
+| Burst (pendant un combo subi) | F |
+| Potion / Provocation | R / T *(à venir)* |
+| Mode du mannequin | F2 |
+| Filtre rétro | F7 |
 | Liste de coups | Tab |
 | Debug | F1 |
 | Recharger les fichiers de données | F6 |
@@ -55,6 +59,7 @@ src/main.gd  ← assemble le tout
 - [x] Étape 2 : moteur de coups (JSON), lecture des inputs 236/623…, mode debug (historique d'inputs, frame data, hitbox), mannequin, liste de coups
 - [x] Étape 3 (en partie) : les 20 coups du katana en version de base
 - [ ] Étape 3 (reste) : charge du Iai, feinte, contre dos tourné, sang à l'écran, overhead
-- [ ] Étape 4 : parry, clash/bind, potion, provocation
+- [x] Étape 4 (en partie) : garde, parry parfait, guard break, jauge de garde, burst, counter-hit, scaling des combos, mannequin d'entraînement
+- [ ] Étape 4 (reste) : clash/bind, potion, provocation
 - [ ] Étape 5 : game feel (hitstop, shake, sons, intro, coup final)
 - [ ] Étape 6 : IA (barres de vie et liste de coups déjà là)

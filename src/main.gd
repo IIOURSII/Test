@@ -37,14 +37,14 @@ func _ready() -> void:
 	cfg = DataLoader.load_json(COMBAT_CFG)
 	controls = DataLoader.load_json(CONTROLS_CFG)
 	ControlsSetup.apply(controls)
-	katana = MoveSet.from_json(DataLoader.load_json(KATANA))
+	katana = _load_weapon(KATANA)
 
 	ArenaBuilder.build(self, cfg)
 
 	world = SimWorld.new(cfg)
 	world.add_fighter(Vector3(0, 0, 4), 0.0, katana)   # 0 = joueur (regarde vers -Z)
 	world.add_fighter(Vector3(0, 0, -1), PI, katana)   # 1 = mannequin (regarde vers le joueur)
-	world.training_dummies = [1]
+	world.training_dummies = [0, 1]
 	prev_states = world.snapshot()
 
 	collector = InputCollector.new()
@@ -106,27 +106,84 @@ func _process(delta: float) -> void:
 	fp_view.update_view(prev_states[0], world.fighters[0], a, collector.look_yaw, collector.look_pitch, delta, world.movesets[0])
 	dummy_view.update_view(prev_states[1], world.fighters[1], a, delta, world.movesets[1])
 	debug_draw.redraw(world, show_debug)
-	hud.update_hud(world, show_debug, collector.is_captured())
+	hud.update_hud(world, show_debug, collector.is_captured(), dummy.mode_name())
 	move_list.refresh(world.movesets[0], world.fighters[0].guard, controls)
 
 
-## Sons et effets visuels déclenchés par la simulation.
+## Charge une arme + les coups communs (Burst).
+func _load_weapon(path: String) -> MoveSet:
+	var ms := MoveSet.from_json(DataLoader.load_json(path))
+	ms.add_move("burst", cfg.get("burst", {}).get("move", {}))
+	return ms
+
+
+func _view_of(i: int) -> FighterView:
+	return dummy_view if i == 1 else null
+
+
+## Sons, effets visuels et messages déclenchés par la simulation.
 func _play_event(e: Dictionary) -> void:
-	match e["type"]:
-		"hit":
-			var power := clampf(float(e["hitstop"]) / 15.0, 0.25, 1.0)
-			var blade: bool = e["button"] == "blade"
-			fx.impact(e["pos"], e["dir"], power, "blade" if blade else "pommel")
-			if blade:
-				sfx.play("hit_heavy" if e["heavy"] else "hit", 0.0 if e["heavy"] else -2.0)
-			else:
-				sfx.play("thock", -1.0)
-			if e["defender"] == 1:
-				dummy_view.flash(power)
-			if e["attacker"] == 0:
-				fp_view.on_impact(power, true)
-			elif e["defender"] == 0:
-				fp_view.on_impact(power, false)
+	var kind: String = e["type"]
+	if kind in ["hit", "block", "parry", "guard_break", "guard_crush"]:
+		var power := clampf(float(e["hitstop"]) / 15.0, 0.25, 1.0)
+		var att: int = e["attacker"]
+		var def: int = e["defender"]
+		var dv := _view_of(def)
+		var player_involved := att == 0 or def == 0
+		match kind:
+			"hit":
+				var blade: bool = e["button"] == "blade"
+				fx.impact(e["pos"], e["dir"], power, "blade" if blade else "pommel")
+				if e["counter"]:
+					sfx.play("hit_heavy", 2.0)
+				elif blade:
+					sfx.play("hit_heavy" if e["heavy"] else "hit", 0.0 if e["heavy"] else -2.0)
+				else:
+					sfx.play("thock", -1.0)
+				if dv:
+					dv.flash(power, Color(1.0, 0.3, 0.2) if e["counter"] else Color.WHITE)
+				if e.has("wrong_height"):
+					hud.popup("%s !" % e["wrong_height"], Color(1.0, 0.6, 0.2))
+				elif e["counter"]:
+					hud.popup("COUNTER", Color(1.0, 0.25, 0.2))
+				elif e["punish"]:
+					hud.popup("PUNISH", Color(1.0, 0.55, 0.9))
+				if def == 0:
+					hud.hurt_flash(power)
+			"block":
+				fx.impact(e["pos"], e["dir"], power, "block")
+				sfx.play("clang", -3.0)
+				sfx.play("thock", -10.0)
+				if dv:
+					dv.flash(0.3, Color(0.5, 0.7, 1.0), false)
+			"parry":
+				fx.impact(e["pos"], e["dir"], 1.0, "parry")
+				sfx.play("parry", 3.0, 0.02)
+				sfx.play("hit", -6.0)
+				hud.popup("PARRY !", Color(1.0, 0.85, 0.3))
+				if dv:
+					dv.flash(1.0, Color(1.0, 0.85, 0.3), false)
+				power = 1.0
+			"guard_break", "guard_crush":
+				fx.impact(e["pos"], e["dir"], 1.0, "pommel")
+				sfx.play("thock", 2.0)
+				sfx.play("hit_heavy", -4.0)
+				hud.popup("GUARD BREAK" if kind == "guard_break" else "GUARD CRUSH", Color(0.5, 0.75, 1.0))
+				if dv:
+					dv.flash(1.0, Color(0.5, 0.75, 1.0))
+				if def == 0:
+					hud.hurt_flash(0.6)
+		if player_involved:
+			fp_view.on_impact(power, att == 0)
+		return
+	match kind:
+		"burst":
+			fx.burst_wave(e["pos"])
+			sfx.play("hit_heavy", 3.0, 0.0)
+			sfx.play("dash", 0.0)
+			hud.popup("BURST", Color(1.0, 0.8, 0.3))
+			if e["fighter"] != 0:
+				fp_view.on_impact(0.8, false)
 		"swing":
 			if e["button"] == "blade":
 				sfx.play("swish_heavy" if e["heavy"] else "swish", -4.0)
@@ -150,6 +207,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_reload_data()
 	elif event.is_action_pressed("toggle_filter"):
 		post.toggle()
+	elif event.is_action_pressed("dummy_mode"):
+		dummy.cycle()
 
 
 ## F6 : relit les fichiers JSON sans relancer le jeu.
@@ -171,7 +230,7 @@ func _reload_data() -> void:
 	if kd.is_empty():
 		push_warning("katana.json invalide : coups précédents conservés.")
 	else:
-		katana = MoveSet.from_json(kd)
+		katana = _load_weapon(KATANA)
 		for i in world.movesets.size():
 			world.movesets[i] = katana
 	var gfx := DataLoader.load_json(GRAPHICS_CFG)

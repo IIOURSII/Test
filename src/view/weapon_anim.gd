@@ -36,6 +36,11 @@ const POSES := {
 	"sheathed": [Vector3(-0.22, -0.58, -0.3), Vector3(0.25, -0.1, 1.0)],
 	"iai_end": [Vector3(0.48, -0.3, -0.5), Vector3(0.9, 0.1, -0.35)],
 
+	# Garde : lame en travers devant soi. Sonné : arme repoussée sur le côté.
+	"block": [Vector3(0.08, -0.2, -0.45), Vector3(-1.0, 0.3, -0.15)],
+	"block_low": [Vector3(0.1, -0.42, -0.45), Vector3(-1.0, -0.05, -0.2)],
+	"staggered": [Vector3(0.5, -0.08, -0.25), Vector3(0.6, 0.7, 0.4)],
+
 	"flick_windup": [Vector3(0.3, -0.28, -0.5), Vector3(0.0, 1.0, -0.2)],
 	"flick_end": [Vector3(0.38, -0.52, -0.6), Vector3(0.7, -0.6, -0.4)],
 }
@@ -151,6 +156,16 @@ static func cam_curve(m: Dictionary, t: float) -> float:
 		return lerpf(-0.35, 1.0, 1.0 - pow(1.0 - u, 3.0))
 	var r := clampf((t - s - a - 2.0) / maxf(total - s - a - 2.0, 1.0), 0.0, 1.0)
 	return 1.0 - smoothstep(0.0, 1.0, r)
+
+
+## Pose hors attaque selon l'état (garde, sonné, repos).
+static func state_pose(f: FighterState) -> Array:
+	var side := float(f.guard)
+	if f.action == FighterState.Action.BLOCK or f.action == FighterState.Action.BLOCKSTUN:
+		return mirror(POSES["block_low"] if f.is_crouching() else POSES["block"], side)
+	if f.action == FighterState.Action.HITSTUN or f.action == FighterState.Action.PARRIED:
+		return mirror(POSES["staggered"], side)
+	return mirror(POSES["rest"], side)
 
 
 static func lerp_pose(a: Array, b: Array, u: float) -> Array:

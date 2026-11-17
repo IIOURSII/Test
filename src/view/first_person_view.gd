@@ -22,6 +22,7 @@ var _shake_time: float = 0.0
 var _fov_punch: float = 0.0
 var _kick: Vector2 = Vector2.ZERO   ## petit à-coup de caméra à l'impact
 var trail: SlashTrail
+var _pose: Array = []   ## pose affichée (lissée hors attaque)
 
 
 func setup(cfg: Dictionary) -> void:
@@ -109,8 +110,12 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 		# Pendant le hitstop, l'arme reste figée (pas d'interpolation).
 		var t := float(cur.move_tick) + (0.0 if cur.hitstop > 0 else alpha)
 		pose = WeaponAnim.pose_for_move(moves.get_move(cur.move_id), t, float(cur.guard))
+	elif cur.action == FighterState.Action.GUARD_SWITCH or cur.action == FighterState.Action.NONE \
+			or cur.action == FighterState.Action.DASH:
+		pose = _smooth(_guard_pose(cur, alpha), delta, 30.0)
 	else:
-		pose = _guard_pose(cur, alpha)
+		pose = _smooth(WeaponAnim.state_pose(cur), delta, 35.0)
+	_pose = pose
 	_apply_pose(pose, bob)
 
 	# Traînée de lame pendant les frames actives (+ un peu après).
@@ -122,6 +127,13 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 				and cur.move_tick >= s0 and cur.move_tick <= e0 and cur.hitstop == 0:
 			trail.add_point(katana.transform * Vector3(0, 0.2, 0), katana.transform * Vector3(0, 0.92, 0))
 	trail.tick(delta, cur.hitstop > 0)
+
+
+## Transition douce vers une pose (évite les sauts quand on lève/baisse la garde).
+func _smooth(target: Array, delta: float, speed: float) -> Array:
+	if _pose.is_empty():
+		return target
+	return WeaponAnim.lerp_pose(_pose, target, 1.0 - exp(-delta * speed))
 
 
 ## Pose de garde, animée pendant le changement de garde.

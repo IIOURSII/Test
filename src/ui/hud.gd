@@ -15,6 +15,12 @@ var hint_label: Label
 var crosshair: ColorRect
 var hp_fill: Array[ColorRect] = []
 var hp_text: Array[Label] = []
+var guard_fill: Array[ColorRect] = []
+var burst_fill: Array[ColorRect] = []
+var popup_label: Label
+var damage_flash: ColorRect
+var dummy_label: Label
+var _popup_tw: Tween
 
 var _history: Array = []        ## [{"dir": int, "btn": String, "n": int}, ...] le plus récent en premier
 var _shown_move: String = ""    ## dernier coup affiché (reste visible après la fin)
@@ -28,8 +34,33 @@ func setup() -> void:
 	crosshair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	add_child(crosshair)
 
+	damage_flash = ColorRect.new()
+	damage_flash.color = Color(0.8, 0.0, 0.0, 0.0)
+	damage_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	damage_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(damage_flash)
+
 	_make_hp_bar(0, "TOI", -BAR_W - 20.0)
 	_make_hp_bar(1, "MANNEQUIN", 20.0)
+
+	popup_label = _make_label(44)
+	popup_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	popup_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	popup_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	popup_label.grow_vertical = Control.GROW_DIRECTION_BOTH
+	popup_label.offset_top -= 140
+	popup_label.offset_bottom -= 140
+	popup_label.add_theme_constant_override("outline_size", 10)
+	popup_label.modulate.a = 0.0
+	add_child(popup_label)
+
+	dummy_label = _make_label(16)
+	dummy_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	dummy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dummy_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	dummy_label.offset_top = 78
+	dummy_label.offset_bottom = 100
+	add_child(dummy_label)
 
 	var col := VBoxContainer.new()
 	col.position = Vector2(16, 70)
@@ -96,8 +127,21 @@ func _make_hp_bar(i: int, title: String, x_offset: float) -> void:
 	fill.position = Vector2(2, 2)
 	fill.size = Vector2(BAR_W - 4, 18)
 	bg.add_child(fill)
+	# Jauge de garde (bleu) et de burst (or), sous la barre de vie.
+	var g := ColorRect.new()
+	g.color = Color(0.35, 0.6, 1.0)
+	g.position = Vector2(0, 24)
+	g.size = Vector2(0, 5)
+	bg.add_child(g)
+	guard_fill.append(g)
+	var bu := ColorRect.new()
+	bu.color = Color(1.0, 0.78, 0.2)
+	bu.position = Vector2(0, 31)
+	bu.size = Vector2(0, 5)
+	bg.add_child(bu)
+	burst_fill.append(bu)
 	var label := _make_label(14)
-	label.position = Vector2(6, 22)
+	label.position = Vector2(6, 38)
 	bg.add_child(label)
 	hp_fill.append(fill)
 	hp_text.append(label)
@@ -118,8 +162,12 @@ func record_input(frame: InputFrame) -> void:
 		btn += "Saut "
 	if frame.has(InputFrame.CROUCH):
 		btn += "Accr "
+	if frame.has(InputFrame.PARRY):
+		btn += "E "
+	if frame.has(InputFrame.BURST):
+		btn += "Burst "
 	if frame.has(InputFrame.GUARD):
-		btn += "Garde "
+		btn += "ChgGarde "
 	if not _history.is_empty() and _history[0]["dir"] == dir and _history[0]["btn"] == btn:
 		_history[0]["n"] = mini(int(_history[0]["n"]) + 1, 99)
 		return
@@ -128,7 +176,26 @@ func record_input(frame: InputFrame) -> void:
 		_history.pop_back()
 
 
-func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool) -> void:
+## Gros texte au centre : COUNTER, PARRY, GUARD BREAK...
+func popup(text: String, color: Color) -> void:
+	popup_label.text = text
+	popup_label.add_theme_color_override("font_color", color)
+	popup_label.modulate.a = 1.0
+	if _popup_tw:
+		_popup_tw.kill()
+	_popup_tw = popup_label.create_tween()
+	_popup_tw.tween_interval(0.45)
+	_popup_tw.tween_property(popup_label, "modulate:a", 0.0, 0.35)
+
+
+## Voile rouge quand le joueur se fait toucher.
+func hurt_flash(power: float) -> void:
+	damage_flash.color.a = 0.18 + 0.2 * power
+	var tw := damage_flash.create_tween()
+	tw.tween_property(damage_flash, "color:a", 0.0, 0.3)
+
+
+func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool, dummy_mode: String = "") -> void:
 	var p := world.fighters[0]
 	var moves := world.movesets[0]
 	var switching := p.action == FighterState.Action.GUARD_SWITCH
@@ -139,6 +206,12 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool) -> void
 		var ratio := float(f.hp) / float(maxi(f.max_hp, 1))
 		hp_fill[i].size.x = (BAR_W - 4) * ratio
 		hp_text[i].text = "%s   %d / %d" % ["TOI" if i == 0 else "MANNEQUIN", f.hp, f.max_hp]
+		var gmax := float(world.cfg["guard"]["guard_max"])
+		var bmax := float(world.cfg["burst"]["gauge_max"])
+		guard_fill[i].size.x = BAR_W * clampf(float(f.guard_gauge) / gmax, 0.0, 1.0)
+		burst_fill[i].size.x = BAR_W * clampf(float(f.burst_gauge) / bmax, 0.0, 1.0)
+		burst_fill[i].color = Color(1.0, 0.85, 0.3) if f.burst_gauge >= int(bmax) else Color(0.6, 0.45, 0.15)
+	dummy_label.text = "Mannequin : %s   (F2 pour changer)" % dummy_mode
 
 	crosshair.visible = mouse_captured
 	if mouse_captured:
@@ -158,6 +231,9 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool) -> void
 	debug_label.text = "\n".join(PackedStringArray([
 		"=== DEBUG (F1) ===   FPS : %d   |   tick : %d" % [Engine.get_frames_per_second(), world.tick],
 		"Vitesse : %.1f m/s   |   état : %s   |   %s" % [hspeed, p.action_name(), "au sol" if p.on_ground else "en l'air"],
+		"Garde (E) : %s   |   fenêtre de parry : %d   |   anti-spam : %d   |   jauge de garde : %d   |   burst (F) : %d" % [
+			"OUI" if (p.action == FighterState.Action.BLOCK or p.action == FighterState.Action.BLOCKSTUN) else "non",
+			p.parry_timer, p.parry_lockout, p.guard_gauge, p.burst_gauge],
 		"Buffer : %s" % (("%s %s (%d ticks)" % [p.pending_input, "LAME" if p.pending_button == "blade" else "POMMEAU", p.pending_age]) if p.pending_move != "" else "-"),
 	]))
 
@@ -182,7 +258,8 @@ func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool) -> void
 	var combo_hits := d.combo_hits if d.combo_hits > 0 else d.last_combo_hits
 	var combo_dmg := d.combo_damage if d.combo_hits > 0 else d.last_combo_damage
 	var adv := ("%+d" % p.last_advantage) if p.has_advantage_info else "-"
-	combo_label.text = "Combo : %d coup(s), %d dégâts   |   Avantage du dernier coup touché : %s ticks" % [combo_hits, combo_dmg, adv]
+	combo_label.text = "Combo : %d coup(s), %d dégâts   |   Avantage (%s) : %s ticks" % [
+		combo_hits, combo_dmg, "sur garde" if p.last_adv_on_block else "touché", adv]
 
 	var lines: PackedStringArray = ["INPUTS (numpad)"]
 	for e in _history:

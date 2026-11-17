@@ -30,6 +30,79 @@
     "steer_ratio": 0.3,
     "segment_accel": 200.0
   },
+  "guard": {
+    "_aide": "GARDE (maintenir E) et PARRY (appuyer sur E juste avant l'impact). angle_deg = la garde ne protège que de face. parry_window = durée (ticks) du parry après l'appui ; parry_lockout = délai avant de pouvoir retenter (anti-spam). Le POMMEAU brise la garde. Les coups 'overhead' doivent être bloqués debout, les coups 'low' accroupi. guard_* = jauge de garde : bloquer la remplit, pleine = garde brisée (crush).",
+    "angle_deg": 80.0,
+    "walk_speed": 2.0,
+    "blockstun_ratio": 0.65,
+    "min_blockstun": 6,
+    "pushback": 2.5,
+    "parry_window": 8,
+    "parry_lockout": 30,
+    "parry_stun": 32,
+    "parry_hitstop": 16,
+    "break_bonus_stun": 12,
+    "guard_max": 1000,
+    "guard_per_block": 40,
+    "guard_per_damage": 1.2,
+    "guard_regen_delay": 60,
+    "guard_regen": 8,
+    "crush_stun": 45
+  },
+  "counter": {
+    "_aide": "COUNTER-HIT : toucher l'adversaire pendant le STARTUP de son coup. Bonus de dégâts, de hitstun et de hitstop.",
+    "damage_mult": 1.25,
+    "hitstun_bonus": 10,
+    "hitstop_bonus": 6
+  },
+  "combo": {
+    "_aide": "SCALING : chaque coup d'un combo fait moins de dégâts et moins de hitstun que le précédent. damage_decay = -12 % par coup (minimum min_damage). hitstun_decay = -6 % par coup (minimum min_hitstun).",
+    "damage_decay": 0.12,
+    "min_damage": 0.3,
+    "hitstun_decay": 0.06,
+    "min_hitstun": 0.5
+  },
+  "burst": {
+    "_aide": "BURST (touche F pendant qu'on encaisse un combo) : onde qui repousse l'adversaire. Jauge pleine requise. Peut être bloqué ou parré : si l'adversaire l'anticipe, tu es puni (grosse recovery). gauge_* = remplissage de la jauge (par tick, et par point de dégât subi).",
+    "gauge_max": 1000,
+    "gauge_regen": 1,
+    "gauge_per_damage": 1.0,
+    "move": {
+      "name": "Burst",
+      "input": "",
+      "button": "burst",
+      "desc": "Onde de choc qui repousse l'adversaire. Utilisable pendant un combo subi.",
+      "anim": "brace",
+      "startup": 8,
+      "active": 6,
+      "recovery": 30,
+      "invuln": [
+        1,
+        16
+      ],
+      "hitboxes": [
+        {
+          "from": [
+            0.0,
+            0.2,
+            0.0
+          ],
+          "to": [
+            0.0,
+            1.9,
+            0.0
+          ],
+          "radius": 2.2,
+          "radial": true,
+          "damage": 0,
+          "hitstun": 30,
+          "hitstop": 12,
+          "knockback": 13.0,
+          "launch": 5.0
+        }
+      ]
+    }
+  },
   "guard_switch_ticks": 10,
   "arena": {
     "half_size": 14.0

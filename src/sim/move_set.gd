@@ -20,6 +20,12 @@ static func from_json(d: Dictionary) -> MoveSet:
 	return ms
 
 
+## Ajoute un coup commun à toutes les armes (ex : le Burst, défini dans combat.json).
+func add_move(id: String, raw: Dictionary) -> void:
+	if not raw.is_empty():
+		moves[id] = _normalize(id, raw)
+
+
 func has_move(id: String) -> bool:
 	return moves.has(id)
 
@@ -77,6 +83,7 @@ static func _normalize(id: String, m: Dictionary) -> Dictionary:
 			"hitstop": int(hb.get("hitstop", m.get("hitstop", 6))),
 			"knockback": float(hb.get("knockback", m.get("knockback", 1.0))),
 			"launch": float(hb.get("launch", m.get("launch", 0.0))),
+			"radial": bool(hb.get("radial", false)),
 		})
 		i += 1
 	out["hitboxes"] = hitboxes
