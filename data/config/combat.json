@@ -1,6 +1,5 @@
 {
   "_aide": "Réglages globaux du combat. Les durées sont en TICKS (60 ticks = 1 seconde). Les distances en mètres, les vitesses en mètres/seconde. Appuie sur F6 en jeu pour recharger ce fichier sans relancer.",
-
   "fighter": {
     "max_hp": 1000,
     "radius": 0.4,
@@ -9,7 +8,6 @@
     "eye_height": 1.6,
     "crouch_eye_height": 1.0
   },
-
   "movement": {
     "walk_speed": 5.0,
     "crouch_speed": 2.2,
@@ -17,7 +15,6 @@
     "air_accel": 14.0,
     "jump_velocity": 7.5,
     "gravity": 24.0,
-
     "dash_speed": 16.0,
     "dash_ticks": 10,
     "dash_slowdown_ticks": 3,
@@ -25,14 +22,22 @@
     "dash_cooldown_ticks": 16,
     "allow_air_dash": true
   },
-
   "guard_switch_ticks": 10,
-
   "arena": {
     "half_size": 14.0
   },
-
   "input": {
-    "buffer_ticks": 12
+    "motion_window_ticks": 14,
+    "button_buffer_ticks": 6,
+    "_aide_input": "motion_window = temps max (ticks) pour faire une manip type 236 avant le clic. button_buffer = un clic fait pendant un coup est gardé en mémoire ce nombre de ticks."
+  },
+  "aim_assist": {
+    "angle_deg": 20.0,
+    "range": 3.5,
+    "_aide": "Magnétisme : si l'adversaire est à moins de angle_deg du centre de l'écran et à moins de range mètres, les coups s'orientent vers lui."
+  },
+  "training": {
+    "dummy_regen_ticks": 120,
+    "_aide": "Le mannequin récupère toute sa vie après ce nombre de ticks sans être touché."
   }
 }

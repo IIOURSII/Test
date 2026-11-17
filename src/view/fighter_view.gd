@@ -6,27 +6,50 @@ var body: MeshInstance3D
 var head: MeshInstance3D
 var visor: MeshInstance3D
 var katana: Node3D
+var _body_mat: StandardMaterial3D
+var _head_mat: StandardMaterial3D
 var _cfg: Dictionary
+var _flash: float = 0.0
 
 
 func setup(cfg: Dictionary, color: Color) -> void:
 	_cfg = cfg
 	var r: float = cfg["fighter"]["radius"]
 	body = MeshUtil.capsule(r, 1.5, color)
+	_body_mat = body.material_override as StandardMaterial3D
 	add_child(body)
 	head = MeshUtil.sphere(0.17, color.lightened(0.25))
+	_head_mat = head.material_override as StandardMaterial3D
 	add_child(head)
 	# Bandeau sombre sur le visage : montre de quel côté il regarde.
 	visor = MeshUtil.box(Vector3(0.26, 0.06, 0.06), Color(0.05, 0.05, 0.05))
 	add_child(visor)
 	katana = MeshUtil.katana()
 	add_child(katana)
+	for m in [_body_mat, _head_mat]:
+		m.emission_enabled = true
+		m.emission = Color.WHITE
+		m.emission_energy_multiplier = 0.0
 
 
-func update_view(prev: FighterState, cur: FighterState, alpha: float) -> void:
+## Flash blanc quand il est touché.
+func flash() -> void:
+	_flash = 1.0
+
+
+func update_view(prev: FighterState, cur: FighterState, alpha: float, delta: float, moves: MoveSet) -> void:
 	var fcfg: Dictionary = _cfg["fighter"]
-	position = prev.pos.lerp(cur.pos, alpha)
-	rotation = Vector3(0, lerp_angle(prev.yaw_rad(), cur.yaw_rad(), alpha), 0)
+	var frozen := cur.hitstop > 0
+	position = cur.pos if frozen else prev.pos.lerp(cur.pos, alpha)
+	var yaw := lerp_angle(prev.yaw_rad(), cur.yaw_rad(), alpha)
+
+	# Recule le buste quand il est sonné, tremble pendant le hitstop.
+	var tilt := 0.28 if cur.action == FighterState.Action.HITSTUN else 0.0
+	var tremble := Vector3.ZERO
+	if frozen and cur.action == FighterState.Action.HITSTUN:
+		tremble = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.03
+	position += tremble
+	rotation = Vector3(tilt, yaw, 0)
 
 	var crouch_t := lerpf(prev.crouch, cur.crouch, alpha) / float(FighterLogic.CROUCH_TICKS)
 	var h := lerpf(float(fcfg["height"]), float(fcfg["crouch_height"]), crouch_t)
@@ -36,6 +59,17 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float) -> void:
 	head.position = Vector3(0, h - 0.17, 0)
 	visor.position = Vector3(0, h - 0.15, -0.15)
 
+	# Même animation que la vue FPS, placée devant le torse.
 	var side := float(cur.guard)
-	katana.position = Vector3(0.32 * side, h * 0.55, -0.35)
-	katana.rotation = Vector3(deg_to_rad(-35.0), 0.0, deg_to_rad(15.0) * side)
+	var pose: Array
+	if cur.action == FighterState.Action.ATTACK and moves.has_move(cur.move_id):
+		var t := float(cur.move_tick) + (0.0 if frozen else alpha)
+		pose = WeaponAnim.pose_for_move(moves.get_move(cur.move_id), t, side)
+	else:
+		pose = WeaponAnim.mirror(WeaponAnim.POSES["rest"], side)
+	var grip: Vector3 = pose[0]
+	katana.transform = Transform3D(WeaponAnim.basis_from_dir(pose[1]), Vector3(0, h - 0.25, 0) + grip * 1.2)
+
+	_flash = move_toward(_flash, 0.0, delta * 8.0)
+	_body_mat.emission_energy_multiplier = _flash * 2.0
+	_head_mat.emission_energy_multiplier = _flash * 2.0

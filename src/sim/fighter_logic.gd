@@ -1,35 +1,53 @@
 class_name FighterLogic
 extends RefCounted
 ## Fait avancer UN combattant d'UN tick : déplacement, saut, accroupi, dash,
-## changement de garde. Aucune dépendance au moteur physique de Godot.
+## changement de garde, coups, hitstun. Aucune dépendance au moteur physique.
 
 const DT := 1.0 / 60.0
 const CROUCH_TICKS := 6
 
 
-static func step(f: FighterState, inp: InputFrame, cfg: Dictionary) -> void:
+static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveSet) -> void:
 	var mv: Dictionary = cfg["movement"]
 	var held: int = inp.buttons
 	var pressed: int = held & ~f.prev_buttons
 
 	f.yaw = inp.yaw
 	f.pitch = inp.pitch
+	f.local_tick += 1
+
+	# Le buffer continue d'enregistrer même pendant le hitstop.
+	if f.action != FighterState.Action.HITSTUN:
+		MotionParser.record(f, held)
+		_record_attack_press(f, pressed, cfg, moves)
+	f.prev_buttons = held
+
+	if f.hitstop > 0:
+		f.hitstop -= 1
+		return
+
+	if f.pending_move != "":
+		f.pending_age += 1
 	if f.dash_cooldown > 0:
 		f.dash_cooldown -= 1
+	f.ticks_since_hit += 1
 
-	# --- Accroupi (seulement au sol) ---
-	var want_crouch := (held & InputFrame.CROUCH) != 0 and f.on_ground and f.action != FighterState.Action.DASH
-	if want_crouch:
+	# --- Accroupi (seulement au sol, en mouvement libre) ---
+	var free_state := f.action == FighterState.Action.NONE or f.action == FighterState.Action.GUARD_SWITCH
+	if (held & InputFrame.CROUCH) != 0 and f.on_ground and free_state:
 		f.crouch = mini(f.crouch + 1, CROUCH_TICKS)
 	else:
 		f.crouch = maxi(f.crouch - 1, 0)
 
 	var wish := wish_dir(f, held)
 
-	# --- Actions en cours ---
+	if f.action == FighterState.Action.ATTACK:
+		_step_attack(f, mv, moves)
+	if f.action == FighterState.Action.HITSTUN:
+		_step_hitstun(f, mv)
 	if f.action == FighterState.Action.DASH:
 		_step_dash(f, mv)
-	else:
+	elif f.action == FighterState.Action.NONE or f.action == FighterState.Action.GUARD_SWITCH:
 		if f.action == FighterState.Action.GUARD_SWITCH:
 			_step_guard_switch(f, cfg)
 		_step_walk(f, mv, wish)
@@ -37,8 +55,8 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary) -> void:
 		_try_dash(f, mv, held, pressed, wish)
 		_try_guard_switch(f, pressed)
 
+	_try_start_attack(f, cfg, moves)
 	_integrate(f, mv)
-	f.prev_buttons = held
 
 
 ## Direction de déplacement voulue (monde, à plat, normalisée).
@@ -58,6 +76,151 @@ static func wish_dir(f: FighterState, held: int) -> Vector3:
 		d = d.normalized()
 	return d
 
+
+# ---------------------------------------------------------------- Coups
+
+## Au moment du clic, on lit la manip et on retient le coup demandé.
+static func _record_attack_press(f: FighterState, pressed: int, cfg: Dictionary, moves: MoveSet) -> void:
+	var button := ""
+	if pressed & InputFrame.BLADE:
+		button = "blade"
+	elif pressed & InputFrame.POMMEL:
+		button = "pommel"
+	if button == "":
+		return
+	var window := int(cfg["input"]["motion_window_ticks"])
+	var notation := MotionParser.resolve(f, window)
+	var id := notation + "_" + button
+	if not moves.has_move(id):
+		notation = "5"
+		id = "5_" + button
+	f.pending_move = id
+	f.pending_input = notation
+	f.pending_button = button
+	f.pending_age = 0
+
+
+static func _try_start_attack(f: FighterState, cfg: Dictionary, moves: MoveSet) -> void:
+	if f.pending_move == "":
+		return
+	if f.pending_age > int(cfg["input"]["button_buffer_ticks"]):
+		_clear_pending(f)
+		return
+	var next_id := f.pending_move
+	var allowed := f.action == FighterState.Action.NONE
+	if f.action == FighterState.Action.ATTACK:
+		var cur := moves.get_move(f.move_id)
+		if not cur.is_empty():
+			# Enchaînement (ex : Kesa-giri x3) : re-cliquer le même bouton sans direction.
+			if cur["chain_next"] != "" and f.pending_input == "5" and f.pending_button == cur["button"] \
+					and MoveSet.in_range(cur["chain_window"], f.move_tick) and moves.has_move(cur["chain_next"]):
+				next_id = cur["chain_next"]
+				allowed = true
+			# Coups annulables dans n'importe quoi (ex : la feinte).
+			elif MoveSet.in_range(cur["free_cancel"], f.move_tick):
+				allowed = true
+	if not allowed:
+		return
+	_clear_pending(f)
+	start_move(f, next_id, moves)
+
+
+static func start_move(f: FighterState, id: String, moves: MoveSet) -> void:
+	var m := moves.get_move(id)
+	if m.is_empty():
+		return
+	f.action = FighterState.Action.ATTACK
+	f.action_tick = 0
+	f.move_id = id
+	f.move_tick = 1
+	f.hit_groups = 0
+	f.crouch = 0
+	_apply_move_tick(f, m)
+
+
+static func _clear_pending(f: FighterState) -> void:
+	f.pending_move = ""
+	f.pending_input = ""
+	f.pending_button = ""
+	f.pending_age = 0
+
+
+static func _step_attack(f: FighterState, mv: Dictionary, moves: MoveSet) -> void:
+	var m := moves.get_move(f.move_id)
+	f.move_tick += 1
+	if m.is_empty() or f.move_tick > int(m["total"]):
+		end_move(f)
+		return
+	_apply_move_tick(f, m)
+	if not _has_horizontal_movement(m, f.move_tick) and f.on_ground:
+		var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(mv["ground_accel"]) * DT)
+		f.vel.x = hv.x
+		f.vel.z = hv.z
+
+
+static func end_move(f: FighterState) -> void:
+	f.action = FighterState.Action.NONE
+	f.move_id = ""
+	f.move_tick = 0
+	f.hit_groups = 0
+
+
+static func _apply_move_tick(f: FighterState, m: Dictionary) -> void:
+	var t := f.move_tick
+	for seg in m["movement"]:
+		if t < int(seg["from"]) or t > int(seg["to"]):
+			continue
+		if seg["has_horizontal"]:
+			var v := f.forward() * float(seg["forward"]) + f.right() * (float(seg["side"]) * f.guard)
+			f.vel.x = v.x
+			f.vel.z = v.z
+		if float(seg["up"]) != 0.0 and t == int(seg["from"]):
+			f.vel.y = float(seg["up"])
+			f.on_ground = false
+	if int(m["guard_flip_at"]) == t:
+		f.guard = -f.guard
+
+
+static func _has_horizontal_movement(m: Dictionary, t: int) -> bool:
+	for seg in m["movement"]:
+		if seg["has_horizontal"] and t >= int(seg["from"]) and t <= int(seg["to"]):
+			return true
+	return false
+
+
+static func is_invulnerable(f: FighterState, moves: MoveSet) -> bool:
+	if f.action != FighterState.Action.ATTACK:
+		return false
+	var m := moves.get_move(f.move_id)
+	return not m.is_empty() and MoveSet.in_range(m["invuln"], f.move_tick)
+
+
+static func ignores_pushbox(f: FighterState, moves: MoveSet) -> bool:
+	if f.action != FighterState.Action.ATTACK:
+		return false
+	var m := moves.get_move(f.move_id)
+	return not m.is_empty() and MoveSet.in_range(m["no_pushbox"], f.move_tick)
+
+
+# ---------------------------------------------------------------- Hitstun
+
+static func _step_hitstun(f: FighterState, mv: Dictionary) -> void:
+	if f.hitstun > 0:
+		f.hitstun -= 1
+	if f.on_ground:
+		var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(mv["ground_accel"]) * 0.5 * DT)
+		f.vel.x = hv.x
+		f.vel.z = hv.z
+	# En l'air (après un launcher), on reste sonné jusqu'à l'atterrissage.
+	if f.hitstun <= 0 and f.on_ground:
+		f.action = FighterState.Action.NONE
+		f.last_combo_hits = f.combo_hits
+		f.last_combo_damage = f.combo_damage
+		f.combo_hits = 0
+		f.combo_damage = 0
+
+
+# ---------------------------------------------------------------- Déplacement
 
 static func _step_walk(f: FighterState, mv: Dictionary, wish: Vector3) -> void:
 	var crouched := f.crouch > CROUCH_TICKS / 2

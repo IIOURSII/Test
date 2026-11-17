@@ -1,11 +1,24 @@
 class_name Hud
 extends CanvasLayer
-## Interface : viseur, indicateur de garde, panneau debug (F1).
+## Interface : viseur, barres de vie, garde, panneau debug façon mode training (F1).
+
+const HISTORY_SIZE := 20
+const BAR_W := 520.0
 
 var debug_label: Label
+var move_label: Label
+var frame_bar: FrameBar
+var combo_label: Label
+var history_label: Label
 var guard_label: Label
 var hint_label: Label
 var crosshair: ColorRect
+var hp_fill: Array[ColorRect] = []
+var hp_text: Array[Label] = []
+
+var _history: Array = []        ## [{"dir": int, "btn": String, "n": int}, ...] le plus récent en premier
+var _shown_move: String = ""    ## dernier coup affiché (reste visible après la fin)
+var _shown_tick: int = 0
 
 
 func setup() -> void:
@@ -15,9 +28,32 @@ func setup() -> void:
 	crosshair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	add_child(crosshair)
 
-	debug_label = _make_label(16)
-	debug_label.position = Vector2(16, 16)
-	add_child(debug_label)
+	_make_hp_bar(0, "TOI", -BAR_W - 20.0)
+	_make_hp_bar(1, "MANNEQUIN", 20.0)
+
+	var col := VBoxContainer.new()
+	col.position = Vector2(16, 70)
+	col.add_theme_constant_override("separation", 6)
+	add_child(col)
+	debug_label = _make_label(15)
+	col.add_child(debug_label)
+	move_label = _make_label(18)
+	col.add_child(move_label)
+	frame_bar = FrameBar.new()
+	col.add_child(frame_bar)
+	combo_label = _make_label(18)
+	col.add_child(combo_label)
+
+	history_label = _make_label(18)
+	var mono := SystemFont.new()
+	mono.font_names = PackedStringArray(["Consolas", "DejaVu Sans Mono", "Menlo", "Courier New", "monospace"])
+	history_label.add_theme_font_override("font", mono)
+	history_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	history_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	history_label.offset_top = 70
+	history_label.offset_right = -20
+	history_label.offset_left = -20
+	add_child(history_label)
 
 	guard_label = _make_label(26)
 	guard_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -35,7 +71,6 @@ func setup() -> void:
 	hint_label.offset_right += 16
 	hint_label.offset_top -= 16
 	hint_label.offset_bottom -= 16
-	hint_label.text = "Échap : libérer la souris  |  F1 : debug  |  F6 : recharger les données"
 	add_child(hint_label)
 
 
@@ -47,36 +82,117 @@ func _make_label(font_size: int) -> Label:
 	return l
 
 
+func _make_hp_bar(i: int, title: String, x_offset: float) -> void:
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.6)
+	bg.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	bg.offset_left = x_offset
+	bg.offset_right = x_offset + BAR_W
+	bg.offset_top = 20
+	bg.offset_bottom = 42
+	add_child(bg)
+	var fill := ColorRect.new()
+	fill.color = Color(0.85, 0.15, 0.12) if i == 0 else Color(0.85, 0.6, 0.15)
+	fill.position = Vector2(2, 2)
+	fill.size = Vector2(BAR_W - 4, 18)
+	bg.add_child(fill)
+	var label := _make_label(14)
+	label.position = Vector2(6, 22)
+	bg.add_child(label)
+	hp_fill.append(fill)
+	hp_text.append(label)
+	label.text = title
+
+
+## Appelé à chaque tick avec les inputs du joueur (historique façon mode training).
+func record_input(frame: InputFrame) -> void:
+	var dir := MotionParser.dir_from_buttons(frame.buttons)
+	var btn := ""
+	if frame.has(InputFrame.BLADE):
+		btn += "L "
+	if frame.has(InputFrame.POMMEL):
+		btn += "P "
+	if frame.has(InputFrame.DASH):
+		btn += "Dash "
+	if frame.has(InputFrame.JUMP):
+		btn += "Saut "
+	if frame.has(InputFrame.CROUCH):
+		btn += "Accr "
+	if frame.has(InputFrame.GUARD):
+		btn += "Garde "
+	if not _history.is_empty() and _history[0]["dir"] == dir and _history[0]["btn"] == btn:
+		_history[0]["n"] = mini(int(_history[0]["n"]) + 1, 99)
+		return
+	_history.push_front({"dir": dir, "btn": btn, "n": 1})
+	if _history.size() > HISTORY_SIZE:
+		_history.pop_back()
+
+
 func update_hud(world: SimWorld, show_debug: bool, mouse_captured: bool) -> void:
 	var p := world.fighters[0]
+	var moves := world.movesets[0]
 	var switching := p.action == FighterState.Action.GUARD_SWITCH
 	guard_label.text = "Garde %s%s" % ["DROITE" if p.guard == FighterState.GUARD_RIGHT else "GAUCHE", "  (changement...)" if switching else ""]
 
+	for i in mini(world.fighters.size(), hp_fill.size()):
+		var f := world.fighters[i]
+		var ratio := float(f.hp) / float(maxi(f.max_hp, 1))
+		hp_fill[i].size.x = (BAR_W - 4) * ratio
+		hp_text[i].text = "%s   %d / %d" % ["TOI" if i == 0 else "MANNEQUIN", f.hp, f.max_hp]
+
 	crosshair.visible = mouse_captured
-	if not mouse_captured:
-		hint_label.text = "Souris libérée : clique dans la fenêtre pour reprendre  |  F1 : debug  |  F6 : recharger les données"
+	if mouse_captured:
+		hint_label.text = "Tab : liste des coups  |  F1 : debug  |  F6 : recharger les données  |  Échap : libérer la souris"
 	else:
-		hint_label.text = "Échap : libérer la souris  |  F1 : debug  |  F6 : recharger les données"
+		hint_label.text = "Souris libérée : clique dans la fenêtre pour reprendre"
 
 	debug_label.visible = show_debug
+	move_label.visible = show_debug
+	frame_bar.visible = show_debug
+	combo_label.visible = show_debug
+	history_label.visible = show_debug
 	if not show_debug:
 		return
+
 	var hspeed := Vector2(p.vel.x, p.vel.z).length()
 	debug_label.text = "\n".join(PackedStringArray([
-		"=== DEBUG (F1) ===",
-		"FPS affichage : %d   |   Tick logique : %d (60/s)" % [Engine.get_frames_per_second(), world.tick],
-		"Position : (%.2f, %.2f, %.2f)" % [p.pos.x, p.pos.y, p.pos.z],
-		"Vitesse au sol : %.2f m/s   |   vertical : %.2f" % [hspeed, p.vel.y],
-		"Action : %s (tick %d)" % [p.action_name(), p.action_tick],
-		"Au sol : %s   |   Accroupi : %d/%d" % ["oui" if p.on_ground else "non", p.crouch, FighterLogic.CROUCH_TICKS],
-		"Dash : recharge %d ticks   |   dash aérien utilisé : %s" % [p.dash_cooldown, "oui" if p.air_dash_used else "non"],
-		"Inputs : %s" % _buttons_text(p.prev_buttons),
+		"=== DEBUG (F1) ===   FPS : %d   |   tick : %d" % [Engine.get_frames_per_second(), world.tick],
+		"Vitesse : %.1f m/s   |   état : %s   |   %s" % [hspeed, p.action_name(), "au sol" if p.on_ground else "en l'air"],
+		"Buffer : %s" % (("%s %s (%d ticks)" % [p.pending_input, "LAME" if p.pending_button == "blade" else "POMMEAU", p.pending_age]) if p.pending_move != "" else "-"),
 	]))
 
+	# Coup en cours (ou le dernier, qui reste affiché pour qu'on puisse le lire).
+	if p.action == FighterState.Action.ATTACK:
+		_shown_move = p.move_id
+		_shown_tick = p.move_tick
+	var m := moves.get_move(_shown_move)
+	if m.is_empty():
+		move_label.text = "Coup : -"
+		frame_bar.clear()
+	else:
+		var btn := "LAME" if m["button"] == "blade" else "POMMEAU"
+		var input: String = m["input"]
+		var phys: String = MoveSet.mirror_notation(input) if p.guard == FighterState.GUARD_LEFT else input
+		var phase := _phase(m, _shown_tick)
+		move_label.text = "Coup : %s %s — %s   [%s]   tick %d/%d   (startup %d / active %d / recovery %d)" % [
+			phys, btn, m["name"], phase, _shown_tick, m["total"], m["startup"], m["active"], m["recovery"]]
+		frame_bar.set_data(m, _shown_tick if p.action == FighterState.Action.ATTACK else 0)
 
-func _buttons_text(b: int) -> String:
-	var parts: PackedStringArray = []
-	for action_name in InputFrame.ACTION_BITS.keys():
-		if b & int(InputFrame.ACTION_BITS[action_name]):
-			parts.append(action_name)
-	return ", ".join(parts) if parts.size() > 0 else "-"
+	var d := world.fighters[1]
+	var combo_hits := d.combo_hits if d.combo_hits > 0 else d.last_combo_hits
+	var combo_dmg := d.combo_damage if d.combo_hits > 0 else d.last_combo_damage
+	var adv := ("%+d" % p.last_advantage) if p.has_advantage_info else "-"
+	combo_label.text = "Combo : %d coup(s), %d dégâts   |   Avantage du dernier coup touché : %s ticks" % [combo_hits, combo_dmg, adv]
+
+	var lines: PackedStringArray = ["INPUTS (numpad)"]
+	for e in _history:
+		lines.append("%2d  %d  %s" % [e["n"], e["dir"], e["btn"]])
+	history_label.text = "\n".join(lines)
+
+
+func _phase(m: Dictionary, t: int) -> String:
+	if t <= int(m["startup"]):
+		return "STARTUP"
+	if t <= int(m["startup"]) + int(m["active"]):
+		return "ACTIVE"
+	return "RECOVERY"

@@ -4,7 +4,7 @@ extends RefCounted
 ## Rien de visuel ici : seulement des données qu'on peut copier/restaurer
 ## (indispensable pour le rollback netcode plus tard).
 
-enum Action { NONE, DASH, GUARD_SWITCH }
+enum Action { NONE, DASH, GUARD_SWITCH, ATTACK, HITSTUN }
 
 const GUARD_RIGHT := 1
 const GUARD_LEFT := -1
@@ -24,8 +24,32 @@ var dash_dir: Vector3 = Vector3.ZERO
 var dash_cooldown: int = 0
 var air_dash_used: bool = false
 
+# --- Coups ---
+var move_id: String = ""
+var move_tick: int = 0        ## 1 = premier tick du coup
+var hit_groups: int = 0       ## groupes de hitbox ayant déjà touché pendant ce coup
+var hitstun: int = 0
+var hitstop: int = 0          ## micro-freeze : le combattant est figé
+
+# --- Buffer d'inputs ---
+var local_tick: int = 0
+var last_dir: int = 5
+var dir_history: Array = []   ## [[direction numpad, tick de début], ...]
+var pending_move: String = "" ## coup demandé mais pas encore lancé
+var pending_input: String = ""
+var pending_button: String = ""
+var pending_age: int = 0
+
+# --- Vie / entraînement ---
 var hp: int = 1000
 var max_hp: int = 1000
+var ticks_since_hit: int = 0
+var combo_hits: int = 0
+var combo_damage: int = 0
+var last_combo_hits: int = 0
+var last_combo_damage: int = 0
+var last_advantage: int = 0   ## avantage (en ticks) du dernier coup qu'on a placé
+var has_advantage_info: bool = false
 
 var prev_buttons: int = 0
 
@@ -45,8 +69,27 @@ func copy() -> FighterState:
 	c.dash_dir = dash_dir
 	c.dash_cooldown = dash_cooldown
 	c.air_dash_used = air_dash_used
+	c.move_id = move_id
+	c.move_tick = move_tick
+	c.hit_groups = hit_groups
+	c.hitstun = hitstun
+	c.hitstop = hitstop
+	c.local_tick = local_tick
+	c.last_dir = last_dir
+	c.dir_history = dir_history.duplicate(true)
+	c.pending_move = pending_move
+	c.pending_input = pending_input
+	c.pending_button = pending_button
+	c.pending_age = pending_age
 	c.hp = hp
 	c.max_hp = max_hp
+	c.ticks_since_hit = ticks_since_hit
+	c.combo_hits = combo_hits
+	c.combo_damage = combo_damage
+	c.last_combo_hits = last_combo_hits
+	c.last_combo_damage = last_combo_damage
+	c.last_advantage = last_advantage
+	c.has_advantage_info = has_advantage_info
 	c.prev_buttons = prev_buttons
 	return c
 
