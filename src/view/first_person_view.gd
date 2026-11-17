@@ -23,6 +23,10 @@ var _fov_punch: float = 0.0
 var _kick: Vector2 = Vector2.ZERO   ## petit à-coup de caméra à l'impact
 var trail: SlashTrail
 var _pose: Array = []   ## pose affichée (lissée hors attaque)
+var _blade_mat: StandardMaterial3D
+var _embers: CPUParticles3D
+var _aura_time: float = 0.0
+var _aura_color: Color = Color(1.0, 0.5, 0.15)
 
 
 func setup(cfg: Dictionary) -> void:
@@ -41,6 +45,7 @@ func setup(cfg: Dictionary) -> void:
 	trail = SlashTrail.new()
 	arms.add_child(trail)
 	trail.setup()
+	_setup_aura()
 
 	var skin := Color(0.85, 0.66, 0.5)
 	var sleeve := Color(0.15, 0.17, 0.25)
@@ -52,6 +57,56 @@ func setup(cfg: Dictionary) -> void:
 	forearm_off = MeshUtil.box(Vector3(0.075, 0.075, 1.0), sleeve)
 	arms.add_child(forearm_main)
 	arms.add_child(forearm_off)
+
+
+## Aura : la lame s'embrase et laisse des braises (après un parry ou un counter).
+func _setup_aura() -> void:
+	var blade := katana.get_node("Blade") as MeshInstance3D
+	_blade_mat = blade.material_override as StandardMaterial3D
+	_blade_mat.emission_enabled = true
+	_blade_mat.emission_energy_multiplier = 0.0
+	_embers = CPUParticles3D.new()
+	_embers.local_coords = false
+	_embers.amount = 40
+	_embers.lifetime = 0.7
+	_embers.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	_embers.emission_box_extents = Vector3(0.01, 0.38, 0.01)
+	_embers.gravity = Vector3(0, 1.5, 0)
+	_embers.initial_velocity_min = 0.1
+	_embers.initial_velocity_max = 0.6
+	_embers.spread = 180.0
+	_embers.scale_amount_min = 0.5
+	_embers.scale_amount_max = 1.2
+	var em := BoxMesh.new()
+	em.size = Vector3(0.012, 0.012, 0.012)
+	_embers.mesh = em
+	var mm := StandardMaterial3D.new()
+	mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mm.vertex_color_use_as_albedo = true
+	mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	_embers.material_override = mm
+	_embers.emitting = false
+	_embers.position = Vector3(0, 0.53, 0)
+	katana.add_child(_embers)
+
+
+func aura(color: Color, seconds: float) -> void:
+	_aura_color = color
+	_aura_time = maxf(_aura_time, seconds)
+	var g := Gradient.new()
+	g.colors = PackedColorArray([Color(1, 1, 0.9, 1), color, Color(color.r, color.g * 0.3, 0.0, 0.0)])
+	g.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	_embers.color_ramp = g
+
+
+func _update_aura(delta: float) -> void:
+	_aura_time = maxf(_aura_time - delta, 0.0)
+	var k := clampf(_aura_time / 0.6, 0.0, 1.0)  # s'éteint sur la dernière demi-seconde
+	_embers.emitting = _aura_time > 0.0
+	_blade_mat.emission = _aura_color
+	_blade_mat.emission_energy_multiplier = k * (2.5 + sin(Time.get_ticks_msec() * 0.02) * 0.8)
+	trail.tint = _aura_color.lightened(0.3) if _aura_time > 0.0 else Color(1.0, 0.95, 0.85)
 
 
 ## Secousse + à-coup + zoom à l'impact (proportionnels à la puissance du coup).
@@ -126,6 +181,7 @@ func update_view(prev: FighterState, cur: FighterState, alpha: float,
 		if m2["button"] == "blade" and not (m2["hitboxes"] as Array).is_empty() \
 				and cur.move_tick >= s0 and cur.move_tick <= e0 and cur.hitstop == 0:
 			trail.add_point(katana.transform * Vector3(0, 0.2, 0), katana.transform * Vector3(0, 0.92, 0))
+	_update_aura(delta)
 	trail.tick(delta, cur.hitstop > 0)
 
 

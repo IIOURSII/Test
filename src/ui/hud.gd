@@ -18,6 +18,10 @@ var hp_text: Array[Label] = []
 var guard_fill: Array[ColorRect] = []
 var burst_fill: Array[ColorRect] = []
 var popup_label: Label
+var popup_box: Control
+var popup_kanji: Label
+var popup_brush: Panel
+var _brush_style: StyleBoxFlat
 var damage_flash: ColorRect
 var dummy_label: Label
 var _popup_tw: Tween
@@ -43,16 +47,49 @@ func setup() -> void:
 	_make_hp_bar(0, "TOI", -BAR_W - 20.0)
 	_make_hp_bar(1, "MANNEQUIN", 20.0)
 
-	popup_label = _make_label(44)
-	popup_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	popup_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	popup_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	popup_label.grow_vertical = Control.GROW_DIRECTION_BOTH
-	popup_label.offset_top -= 140
-	popup_label.offset_bottom -= 140
+	# Popup "aura" : trait de pinceau + kanji géant + sous-titre.
+	popup_box = Control.new()
+	popup_box.set_anchors_preset(Control.PRESET_CENTER)
+	popup_box.offset_left = -330
+	popup_box.offset_right = 330
+	popup_box.offset_top = -300
+	popup_box.offset_bottom = -60
+	popup_box.pivot_offset = Vector2(330, 120)
+	popup_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popup_box.modulate.a = 0.0
+	add_child(popup_box)
+
+	popup_brush = Panel.new()
+	_brush_style = StyleBoxFlat.new()
+	_brush_style.bg_color = Color(0.05, 0.02, 0.02, 0.85)
+	_brush_style.skew = Vector2(0.35, 0.0)
+	_brush_style.set_corner_radius_all(40)
+	popup_brush.add_theme_stylebox_override("panel", _brush_style)
+	popup_brush.position = Vector2(30, 95)
+	popup_brush.size = Vector2(600, 70)
+	popup_brush.pivot_offset = Vector2(300, 35)
+	popup_box.add_child(popup_brush)
+
+	popup_kanji = Label.new()
+	var brush_font := SystemFont.new()
+	brush_font.font_names = PackedStringArray(["Yu Mincho", "MS Mincho", "Noto Serif CJK JP", "Hiragino Mincho ProN",
+			"Noto Sans CJK JP", "Yu Gothic", "MS Gothic", "Hiragino Sans"])
+	brush_font.font_weight = 800
+	popup_kanji.add_theme_font_override("font", brush_font)
+	popup_kanji.add_theme_font_size_override("font_size", 150)
+	popup_kanji.add_theme_constant_override("outline_size", 18)
+	popup_kanji.add_theme_color_override("font_outline_color", Color(0.02, 0.0, 0.0))
+	popup_kanji.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	popup_kanji.position = Vector2(0, -20)
+	popup_kanji.size = Vector2(660, 190)
+	popup_box.add_child(popup_kanji)
+
+	popup_label = _make_label(34)
 	popup_label.add_theme_constant_override("outline_size", 10)
-	popup_label.modulate.a = 0.0
-	add_child(popup_label)
+	popup_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	popup_label.position = Vector2(0, 108)
+	popup_label.size = Vector2(660, 50)
+	popup_box.add_child(popup_label)
 
 	dummy_label = _make_label(16)
 	dummy_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -176,16 +213,25 @@ func record_input(frame: InputFrame) -> void:
 		_history.pop_back()
 
 
-## Gros texte au centre : COUNTER, PARRY, GUARD BREAK...
-func popup(text: String, color: Color) -> void:
+## Gros kanji au pinceau + sous-titre : 斬 COUNTER, 弾 PARRY, 破 GUARD BREAK...
+func popup(text: String, color: Color, kanji: String = "") -> void:
 	popup_label.text = text
 	popup_label.add_theme_color_override("font_color", color)
-	popup_label.modulate.a = 1.0
+	popup_kanji.text = kanji
+	popup_kanji.add_theme_color_override("font_color", color.lightened(0.15))
+	_brush_style.bg_color = Color(color.r * 0.25, color.g * 0.08, color.b * 0.08, 0.85)
+	popup_box.modulate.a = 1.0
+	popup_box.rotation = deg_to_rad(randf_range(-7.0, 7.0))
+	popup_box.scale = Vector2.ONE * 1.9
+	popup_brush.scale = Vector2(0.0, 1.0)
 	if _popup_tw:
 		_popup_tw.kill()
-	_popup_tw = popup_label.create_tween()
-	_popup_tw.tween_interval(0.45)
-	_popup_tw.tween_property(popup_label, "modulate:a", 0.0, 0.35)
+	_popup_tw = popup_box.create_tween()
+	_popup_tw.set_parallel(true)
+	_popup_tw.tween_property(popup_box, "scale", Vector2.ONE, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_popup_tw.tween_property(popup_brush, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	_popup_tw.chain().tween_interval(0.5)
+	_popup_tw.chain().tween_property(popup_box, "modulate:a", 0.0, 0.3)
 
 
 ## Voile rouge quand le joueur se fait toucher.

@@ -1,9 +1,11 @@
-// Post-process "rétro pixelisé" (inspiration Inscryption) :
-// gros pixels, palette réduite avec tramage (dithering), étalonnage chaud/désaturé,
-// vignette sombre et grain de film. Réglages dans data/config/graphics.json.
+// Post-process plein écran :
+// 1) style "rétro pixelisé" (gros pixels, palette tramée, vignette, grain) - activable avec F7
+// 2) effets d'impact façon anime : impact frames bicolores, aberration chromatique,
+//    zoom blur, lignes de vitesse. Pilotés par src/view/post_process.gd.
 shader_type canvas_item;
 
 uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
+uniform float retro = 1.0;
 uniform float pixel_size = 4.0;
 uniform float color_levels = 7.0;
 uniform float dither_strength = 1.0;
@@ -15,18 +17,44 @@ uniform float brightness = 1.0;
 uniform vec3 tint = vec3(1.0, 0.92, 0.82);
 uniform vec3 shadow_tint = vec3(0.05, 0.04, 0.07);
 
+uniform float impact = 0.0;
+uniform vec3 impact_color = vec3(1.0);
+uniform float impact_invert = 0.0;
+uniform float aberration = 0.0;
+uniform float zoom_blur = 0.0;
+uniform float speed_lines = 0.0;
+uniform vec3 lines_color = vec3(1.0);
+
 const float BAYER[16] = float[16](
 	0.0, 8.0, 2.0, 10.0,
 	12.0, 4.0, 14.0, 6.0,
 	3.0, 11.0, 1.0, 9.0,
 	15.0, 7.0, 13.0, 5.0);
 
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void fragment() {
 	vec2 screen_size = 1.0 / SCREEN_PIXEL_SIZE;
+	float ps = retro > 0.5 ? max(pixel_size, 1.0) : 1.0;
 	vec2 px = SCREEN_UV * screen_size;
-	vec2 cell = floor(px / pixel_size);
-	vec2 uv = (cell + 0.5) * pixel_size / screen_size;
-	vec3 c = texture(screen_tex, uv).rgb;
+	vec2 cell = floor(px / ps);
+	vec2 uv = (cell + 0.5) * ps / screen_size;
+
+	// Zoom blur + aberration chromatique (vers le centre de l'écran).
+	vec2 dir = uv - vec2(0.5);
+	vec3 c = vec3(0.0);
+	const int N = 6;
+	for (int i = 0; i <= N; i++) {
+		float k = 1.0 - zoom_blur * 0.035 * float(i);
+		vec2 suv = vec2(0.5) + dir * k;
+		vec2 ab = dir * aberration * 0.025;
+		c.r += texture(screen_tex, suv + ab).r;
+		c.g += texture(screen_tex, suv).g;
+		c.b += texture(screen_tex, suv - ab).b;
+	}
+	c /= float(N + 1);
 
 	// Étalonnage
 	float l = dot(c, vec3(0.299, 0.587, 0.114));
@@ -35,20 +63,39 @@ void fragment() {
 	c *= tint * brightness;
 	c = max(c, shadow_tint * (1.0 - l));
 
+	// Lignes de vitesse radiales (style manga).
+	if (speed_lines > 0.001) {
+		vec2 d = uv - vec2(0.5);
+		d.x *= screen_size.x / screen_size.y;
+		float ang = atan(d.y, d.x);
+		float bin = floor((ang + 3.14159) / 6.28318 * 140.0);
+		float rnd = hash(vec2(bin, floor(TIME * 24.0)));
+		float r = length(d);
+		float start = 0.18 + rnd * 0.3;
+		float line_mask = step(0.62, rnd) * smoothstep(start, start + 0.15, r);
+		c = mix(c, lines_color, line_mask * speed_lines);
+	}
+
+	// Impact frame : image réduite à 2 tons (silhouettes), éventuellement inversée.
+	float L = dot(c, vec3(0.299, 0.587, 0.114));
+	float t = step(0.3, L);
+	t = mix(t, 1.0 - t, impact_invert);
+	vec3 ic = mix(vec3(0.02), impact_color, t);
+	c = mix(c, ic, impact);
+
 	// Vignette
-	vec2 d = (cell + 0.5) * pixel_size / screen_size - 0.5;
-	c *= clamp(1.0 - vignette * dot(d, d) * 2.2, 0.0, 1.0);
+	vec2 vd = uv - 0.5;
+	c *= clamp(1.0 - vignette * dot(vd, vd) * 2.2 * (1.0 - impact), 0.0, 1.0);
 
-	// Grain (par gros pixel, animé)
-	float n = fract(sin(dot(cell + floor(TIME * 12.0) * vec2(17.0, 31.0), vec2(12.9898, 78.233))) * 43758.5453);
-	c += (n - 0.5) * grain;
-
-	// Tramage + palette réduite
-	int bx = int(mod(cell.x, 4.0));
-	int by = int(mod(cell.y, 4.0));
-	float b = BAYER[by * 4 + bx] / 16.0 - 0.5;
-	float lv = max(color_levels - 1.0, 1.0);
-	c = floor(c * lv + 0.5 + b * dither_strength) / lv;
+	if (retro > 0.5) {
+		float n = hash(cell + floor(TIME * 12.0) * vec2(17.0, 31.0));
+		c += (n - 0.5) * grain;
+		int bx = int(mod(cell.x, 4.0));
+		int by = int(mod(cell.y, 4.0));
+		float b = BAYER[by * 4 + bx] / 16.0 - 0.5;
+		float lv = max(color_levels - 1.0, 1.0);
+		c = floor(c * lv + 0.5 + b * dither_strength) / lv;
+	}
 
 	COLOR = vec4(clamp(c, 0.0, 1.0), 1.0);
 }

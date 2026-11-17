@@ -59,13 +59,16 @@ static func katana() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Katana"
 	var handle := box(Vector3(0.035, 0.26, 0.035), Color(0.12, 0.08, 0.07))
+	handle.name = "Handle"
 	root.add_child(handle)
 	var tsuba := cylinder(0.05, 0.012, Color(0.55, 0.45, 0.2))
+	tsuba.name = "Tsuba"
 	tsuba.position = Vector3(0, 0.135, 0)
 	root.add_child(tsuba)
 	var blade := box(Vector3(0.008, 0.78, 0.032), Color(0.85, 0.87, 0.9))
 	(blade.material_override as StandardMaterial3D).metallic = 0.9
 	(blade.material_override as StandardMaterial3D).roughness = 0.25
+	blade.name = "Blade"
 	blade.position = Vector3(0, 0.53, 0)
 	root.add_child(blade)
 	return root

@@ -178,7 +178,8 @@ func _resolve_contact(i: int, j: int, hb: Dictionary, capsule: Array) -> void:
 		fwd = fwd.normalized() if fwd.length() > 0.01 else att.forward()
 	else:
 		fwd = Combat.attack_frame(att, def, cfg)[0]
-	var info := {"pos": _impact_point(def, capsule), "dir": fwd, "button": button}
+	var info := {"pos": _impact_point(def, capsule), "dir": fwd, "button": button,
+			"anim": str(m.get("anim", "")), "guard": att.guard}
 	var faces := _faces(def, att)
 
 	# 1) Parry parfait : appui sur E juste avant l'impact.

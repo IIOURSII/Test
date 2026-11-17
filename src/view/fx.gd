@@ -1,6 +1,15 @@
 class_name Fx
 extends Node3D
-## Effets d'impact : gerbe d'étincelles, gouttes, éclair lumineux.
+## Effets 3D : gerbes d'étincelles, gouttes, braises, éclairs, marques de coupe, ondes de choc.
+
+const SLASH_SHADER := preload("res://shaders/slash.gdshader")
+const RING_SHADER := preload("res://shaders/ring.gdshader")
+
+## Inclinaison de la marque de coupe selon le geste (degrés, garde droite).
+const SLASH_ROLL := {
+	"diag": 35.0, "diag_rev": -35.0, "horizontal": 4.0, "iai": -6.0,
+	"rising": 80.0, "down": 95.0, "down_up": 85.0, "thrust": 0.0, "flick": 60.0,
+}
 
 var _spark_mesh: BoxMesh
 var _spark_mat: StandardMaterial3D
@@ -20,39 +29,110 @@ func setup() -> void:
 	_flash_mesh.height = 1.0
 
 
-## kind : "blade" (étincelles + gouttes) ou "pommel" (poussière, choc sourd).
+## kind : "blade", "pommel", "block", "parry".
 func impact(pos: Vector3, dir: Vector3, power: float, kind: String) -> void:
 	if kind == "blade":
-		_burst(pos, dir, int(16 + 34 * power), 0.32, 5.0, 12.0 + 6.0 * power,
+		_burst(pos, dir, int(20 + 40 * power), 0.32, 5.0, 13.0 + 7.0 * power,
 				[Color(1, 1, 1, 1), Color(1.0, 0.75, 0.3, 1), Color(1.0, 0.3, 0.05, 0)], 60.0, 1.0)
-		_burst(pos, dir, int(5 + 10 * power), 0.5, 2.0, 5.0,
-				[Color(0.7, 0.02, 0.02, 1), Color(0.45, 0.0, 0.0, 0)], 35.0, 1.8)
+		_burst(pos, dir, int(6 + 12 * power), 0.55, 2.0, 5.5,
+				[Color(0.75, 0.02, 0.02, 1), Color(0.45, 0.0, 0.0, 0)], 35.0, 1.8)
+		embers(pos, int(8 + 14 * power), Color(1.0, 0.45, 0.1))
 		_flash(pos, Color(1.0, 0.85, 0.6), 0.5 + 0.5 * power)
 	elif kind == "block":
-		# Métal contre métal : étincelles blanc-bleu, pas de sang.
-		_burst(pos, -dir, int(14 + 20 * power), 0.25, 4.0, 10.0,
+		_burst(pos, -dir, int(16 + 22 * power), 0.25, 4.0, 11.0,
 				[Color(1, 1, 1, 1), Color(0.6, 0.8, 1.0, 1), Color(0.3, 0.5, 1.0, 0)], 70.0, 0.9)
 		_flash(pos, Color(0.7, 0.85, 1.0), 0.35 + 0.3 * power)
 	elif kind == "parry":
-		# Gros feu d'artifice doré.
-		_burst(pos, -dir, 70, 0.45, 6.0, 16.0,
-				[Color(1, 1, 1, 1), Color(1.0, 0.85, 0.3, 1), Color(1.0, 0.5, 0.1, 0)], 110.0, 1.3)
-		_flash(pos, Color(1.0, 0.85, 0.4), 1.6)
+		_burst(pos, -dir, 90, 0.5, 6.0, 18.0,
+				[Color(1, 1, 1, 1), Color(1.0, 0.85, 0.3, 1), Color(1.0, 0.5, 0.1, 0)], 120.0, 1.3)
+		embers(pos, 30, Color(1.0, 0.75, 0.25))
+		_flash(pos, Color(1.0, 0.85, 0.4), 1.8)
 	else:
-		_burst(pos, dir, int(10 + 12 * power), 0.3, 2.0, 6.0,
+		_burst(pos, dir, int(12 + 14 * power), 0.3, 2.0, 6.0,
 				[Color(1, 1, 0.9, 0.8), Color(0.7, 0.65, 0.55, 0)], 80.0, 1.4)
 		_flash(pos, Color(1.0, 1.0, 0.9), 0.35 + 0.3 * power)
 
 
-## Onde du Burst : grosse sphère dorée qui s'étend.
+## Marque de coupe géante qui traverse la cible, face caméra, orientée selon le geste.
+func slash_mark(pos: Vector3, anim: String, guard: int, length: float, edge: Color, life: float = 0.32) -> void:
+	var roll := float(SLASH_ROLL.get(anim, 20.0)) * float(guard)
+	if anim == "thrust":
+		_slash_quad(pos, roll + 90.0, length * 0.45, edge, life)   # estoc = étoile en croix
+	_slash_quad(pos, roll, length, edge, life)
+
+
+func _slash_quad(pos: Vector3, roll_deg: float, length: float, edge: Color, life: float) -> void:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(length, length * 0.16)
+	mi.mesh = q
+	var m := ShaderMaterial.new()
+	m.shader = SLASH_SHADER
+	m.set_shader_parameter("edge_color", edge)
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	mi.position = pos
+	_face_camera(mi)
+	mi.rotate_object_local(Vector3(0, 0, 1), deg_to_rad(roll_deg))
+	var tw := mi.create_tween()
+	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("progress", v), 0.0, 1.0, life)
+	tw.tween_callback(mi.queue_free)
+
+
+## Onde de choc. flat = au sol, sinon face caméra.
+func ring(pos: Vector3, color: Color, radius: float, flat: bool, life: float = 0.4, thickness: float = 0.08) -> void:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(radius * 2.0, radius * 2.0)
+	mi.mesh = q
+	var m := ShaderMaterial.new()
+	m.shader = RING_SHADER
+	m.set_shader_parameter("color", color)
+	m.set_shader_parameter("thickness", thickness)
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	mi.position = pos
+	if flat:
+		mi.rotation = Vector3(-PI / 2.0, 0, 0)
+	else:
+		_face_camera(mi)
+	var tw := mi.create_tween()
+	tw.tween_method(func(v: float) -> void: m.set_shader_parameter("progress", v), 0.0, 1.0, life)
+	tw.tween_callback(mi.queue_free)
+
+
+## Braises qui montent lentement.
+func embers(pos: Vector3, amount: int, color: Color) -> void:
+	_burst(pos, Vector3.UP, amount, 1.1, 0.5, 2.5,
+			[Color(1, 1, 0.8, 1), color, Color(color.r, color.g * 0.4, 0.0, 0)], 90.0, 0.5, Vector3(0, 1.2, 0))
+
+
+## Onde du Burst.
 func burst_wave(pos: Vector3) -> void:
 	_flash(pos, Color(1.0, 0.8, 0.3), 2.6)
-	_burst(pos, Vector3.UP, 60, 0.5, 5.0, 12.0,
+	_burst(pos, Vector3.UP, 70, 0.5, 5.0, 13.0,
 			[Color(1, 1, 0.8, 1), Color(1.0, 0.7, 0.2, 0)], 180.0, 1.2)
+	ring(Vector3(pos.x, 0.05, pos.z), Color(1.0, 0.75, 0.25), 5.0, true, 0.5, 0.06)
+	ring(pos, Color(1.0, 0.85, 0.4), 4.0, false, 0.45)
+	embers(pos, 40, Color(1.0, 0.7, 0.2))
+
+
+func _face_camera(n: Node3D) -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var to_cam := cam.global_position - n.global_position
+	if to_cam.length() < 0.01:
+		return
+	var up := Vector3.UP if absf(to_cam.normalized().dot(Vector3.UP)) < 0.98 else Vector3.FORWARD
+	# Le quad regarde dans le sens +Z : on oriente -Z à l'opposé de la caméra.
+	n.look_at(n.global_position - to_cam, up)
 
 
 func _burst(pos: Vector3, dir: Vector3, amount: int, life: float, vmin: float, vmax: float,
-		colors: Array, spread: float, size: float) -> void:
+		colors: Array, spread: float, size: float, gravity: Vector3 = Vector3(0, -14, 0)) -> void:
 	var p := CPUParticles3D.new()
 	p.one_shot = true
 	p.explosiveness = 1.0
@@ -64,7 +144,9 @@ func _burst(pos: Vector3, dir: Vector3, amount: int, life: float, vmin: float, v
 	p.spread = spread
 	p.initial_velocity_min = vmin
 	p.initial_velocity_max = vmax
-	p.gravity = Vector3(0, -14, 0)
+	p.gravity = gravity
+	p.damping_min = 0.5
+	p.damping_max = 2.0
 	p.particle_flag_align_y = true
 	p.scale_amount_min = 0.5 * size
 	p.scale_amount_max = 1.3 * size
