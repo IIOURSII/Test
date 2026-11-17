@@ -847,11 +847,31 @@
       "name": "Nōtō (troll)",
       "input": "44",
       "button": "pommel",
-      "desc": "Rengaine lentement et tourne le dos. (Contre automatique : étape 3.)",
+      "desc": "Rengaine lentement et TOURNE LE DOS. Toute attaque pendant les premiers ticks déclenche un contre dévastateur (même dans le dos) ; après, tu es vulnérable.",
       "anim": "sheathe",
-      "startup": 10,
+      "startup": 8,
       "active": 0,
-      "recovery": 30,
+      "recovery": 34,
+      "hitboxes": [],
+      "auto_counter": [
+        3,
+        22
+      ],
+      "counter_damage": 220,
+      "counter_stun": 40,
+      "counter_hitstop": 20,
+      "turn_back": true
+    },
+    "taunt": {
+      "name": "Kata",
+      "input": "",
+      "button": "taunt",
+      "hidden": true,
+      "desc": "Provocation : fait tournoyer la lame et la rengaine avec un claquement sec. Ne sert à rien.",
+      "anim": "twirl",
+      "startup": 8,
+      "active": 56,
+      "recovery": 18,
       "hitboxes": []
     }
   }

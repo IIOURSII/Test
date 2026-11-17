@@ -23,14 +23,14 @@ static func box(size: Vector3, color: Color, emission: float = 0.0) -> MeshInsta
 	return mi
 
 
-static func cylinder(radius: float, height: float, color: Color) -> MeshInstance3D:
+static func cylinder(radius: float, height: float, color: Color, emission: float = 0.0) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
 	cm.top_radius = radius
 	cm.bottom_radius = radius
 	cm.height = height
 	mi.mesh = cm
-	mi.material_override = mat(color)
+	mi.material_override = mat(color, emission)
 	return mi
 
 

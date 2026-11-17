@@ -4,7 +4,7 @@ extends RefCounted
 ## Rien de visuel ici : seulement des données qu'on peut copier/restaurer
 ## (indispensable pour le rollback netcode plus tard).
 
-enum Action { NONE, DASH, GUARD_SWITCH, ATTACK, HITSTUN, BLOCK, BLOCKSTUN, PARRIED }
+enum Action { NONE, DASH, GUARD_SWITCH, ATTACK, HITSTUN, BLOCK, BLOCKSTUN, PARRIED, BIND }
 
 const GUARD_RIGHT := 1
 const GUARD_LEFT := -1
@@ -69,6 +69,12 @@ var issen: bool = false         ## le coup en cours est un Issen
 var cancel_buffer: int = 0
 var pending_fx: String = ""     ## événement visuel à signaler (posture, cancel, Issen...)
 
+# --- Map / objets ---
+var floor_y: float = 0.0        ## hauteur du sol sous le combattant (plateformes)
+var ground_friction: float = 1.0 ## < 1 : sol glissant (or, glace...)
+var potions_left: int = 1
+var bind_presses: int = 0       ## clics pendant un bind (clash)
+
 var prev_buttons: int = 0
 
 
@@ -122,6 +128,10 @@ func copy() -> FighterState:
 	c.issen = issen
 	c.cancel_buffer = cancel_buffer
 	c.pending_fx = pending_fx
+	c.floor_y = floor_y
+	c.ground_friction = ground_friction
+	c.potions_left = potions_left
+	c.bind_presses = bind_presses
 	c.prev_buttons = prev_buttons
 	return c
 

@@ -77,6 +77,12 @@ static func _normalize(id: String, m: Dictionary) -> Dictionary:
 	out["tags"] = m.get("tags", [])
 	out["stance"] = bool(m.get("stance", false))
 	out["restore_edge"] = bool(m.get("restore_edge", false))
+	out["heal_at"] = int(m.get("heal_at", -1))
+	out["auto_counter"] = _range(m.get("auto_counter", null))
+	out["counter_damage"] = int(m.get("counter_damage", 150))
+	out["counter_stun"] = int(m.get("counter_stun", 30))
+	out["counter_hitstop"] = int(m.get("counter_hitstop", 16))
+	out["turn_back"] = bool(m.get("turn_back", false))
 
 	var movement: Array = []
 	for seg in m.get("movement", []):

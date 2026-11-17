@@ -1,0 +1,13 @@
+{
+  "name": "Salle du Trône", "subtitle": "Château", "kanji": "城", "theme": "chateau",
+  "desc": "Longue salle à colonnades : l'allée centrale est dégagée, les bas-côtés sont des couloirs étroits entre colonnes et murs, parfaits pour piéger un grand balayage... ou pour s'y faire piéger.",
+  "bounds": {"type": "rect", "half_x": 8, "half_z": 15},
+  "spawn_distance": 6,
+  "obstacles": [
+    {"pos": [4.8, 0, 0], "size": [1.2, 6.0, 1.2], "look": "castle_pillar"},
+    {"pos": [4.8, 0, 8], "size": [1.2, 6.0, 1.2], "look": "castle_pillar"},
+    {"pos": [-4.8, 0, 8], "size": [1.2, 6.0, 1.2], "look": "castle_pillar"}
+  ],
+  "zones": [], "geysers": [],
+  "visual": {}
+}

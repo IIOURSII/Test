@@ -1,0 +1,13 @@
+{
+  "name": "Jardin du Shōgun", "subtitle": "Japon féodal", "kanji": "侍", "theme": "japon",
+  "desc": "Une estrade centrale surélevée : celui qui la tient domine, et il faut SAUTER pour l'y rejoindre (saut punissable). Quatre lanternes de pierre brisent les balayages autour.",
+  "bounds": {"type": "rect", "half_x": 13, "half_z": 13},
+  "spawn_distance": 6,
+  "obstacles": [
+    {"pos": [0, 0, 0], "size": [5.0, 0.55, 5.0], "look": "platform", "bounce": false},
+    {"pos": [4.2, 0, 4.2], "size": [0.75, 1.7, 0.75], "look": "lantern"},
+    {"pos": [4.2, 0, -4.2], "size": [0.75, 1.7, 0.75], "look": "lantern"}
+  ],
+  "zones": [], "geysers": [],
+  "visual": {}
+}

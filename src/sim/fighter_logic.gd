@@ -13,9 +13,23 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 	var held: int = inp.buttons
 	var pressed: int = held & ~f.prev_buttons
 
+	f.local_tick += 1
+
+	# BIND (lames croisées) : on ne fait que marteler la LAME ; le monde décide du gagnant.
+	if f.action == FighterState.Action.BIND:
+		if pressed & InputFrame.BLADE:
+			f.bind_presses += 1
+		f.prev_buttons = held
+		if f.hitstop > 0:
+			f.hitstop -= 1
+			return
+		f.action_tick += 1
+		f.vel = Vector3(0.0, minf(f.vel.y, 0.0), 0.0)
+		_integrate(f, mv)
+		return
+
 	f.yaw = inp.yaw
 	f.pitch = inp.pitch
-	f.local_tick += 1
 
 	# Le buffer continue d'enregistrer même pendant le hitstop.
 	var stunned := f.action == FighterState.Action.HITSTUN or f.action == FighterState.Action.PARRIED
@@ -77,6 +91,7 @@ static func step(f: FighterState, inp: InputFrame, cfg: Dictionary, moves: MoveS
 			_try_jump(f, mv, pressed)
 			_try_dash(f, mv, held, pressed, wish)
 			_try_guard_switch(f, pressed)
+		_try_items(f, pressed, cfg, moves)
 
 	_try_start_attack(f, cfg, moves, wish)
 	_integrate(f, mv)
@@ -132,12 +147,25 @@ static func _step_stun_simple(f: FighterState, mv: Dictionary, after: int) -> vo
 	if f.hitstun > 0:
 		f.hitstun -= 1
 	if f.on_ground:
-		var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(mv["ground_accel"]) * 0.6 * DT)
+		var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(mv["ground_accel"]) * 0.6 * f.ground_friction * DT)
 		f.vel.x = hv.x
 		f.vel.z = hv.z
 	if f.hitstun <= 0:
 		f.action = after
 		f.action_tick = 0
+
+
+## Potion (R) et provocation (T) : seulement quand on est libre.
+static func _try_items(f: FighterState, pressed: int, cfg: Dictionary, moves: MoveSet) -> void:
+	if f.action != FighterState.Action.NONE and f.action != FighterState.Action.BLOCK:
+		return
+	if (pressed & InputFrame.POTION) and f.potions_left > 0 and moves.has_move("potion") and f.on_ground:
+		f.potions_left -= 1   # consommée dès le début : si on se fait toucher, elle est perdue
+		start_move(f, "potion", moves, cfg, Vector3.ZERO)
+		f.pending_fx = "potion"
+	elif (pressed & InputFrame.TAUNT) and moves.has_move("taunt") and f.action == FighterState.Action.NONE:
+		start_move(f, "taunt", moves, cfg, Vector3.ZERO)
+		f.pending_fx = "taunt"
 
 
 ## Burst : seulement pendant qu'on encaisse, jauge pleine.
@@ -279,6 +307,10 @@ static func _step_attack(f: FighterState, cfg: Dictionary, moves: MoveSet, wish:
 	if m["restore_edge"] and f.move_tick == int(m["startup"]) + int(m["active"]):
 		f.weapon_gauge = 100
 		f.pending_fx = "chiburi"
+	if int(m["heal_at"]) == f.move_tick:
+		var heal := roundi(float(f.max_hp) * float(cfg["potion"]["heal_ratio"]))
+		f.hp = mini(f.hp + heal, f.max_hp)
+		f.pending_fx = "potion_heal"
 	_apply_move_tick(f, m, cfg, wish)
 	# Issen : ruée éclair pendant les frames actives.
 	if f.issen and f.move_tick > int(m["startup"]) - 2 and f.move_tick <= int(m["startup"]) + int(m["active"]):
@@ -319,13 +351,13 @@ static func _apply_move_tick(f: FighterState, m: Dictionary, cfg: Dictionary, wi
 	if has_seg:
 		hv = hv.move_toward(target, float(ac["segment_accel"]) * DT)
 	elif f.on_ground:
-		hv *= exp(-float(ac["damping"]) * DT)
+		hv *= exp(-float(ac["damping"]) * f.ground_friction * DT)
 		var startup := int(m["startup"])
 		var in_active := t > startup and t <= startup + int(m["active"])
 		var steer := Vector3.ZERO
 		if not in_active:
 			steer = wish * float(cfg["movement"]["walk_speed"]) * float(ac["steer_ratio"])
-		hv = hv.move_toward(steer, float(ac["friction"]) * DT)
+		hv = hv.move_toward(steer, float(ac["friction"]) * f.ground_friction * DT)
 	f.vel.x = hv.x
 	f.vel.z = hv.z
 
@@ -355,7 +387,7 @@ static func _step_hitstun(f: FighterState, mv: Dictionary) -> void:
 	if f.hitstun > 0:
 		f.hitstun -= 1
 	if f.on_ground:
-		var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(mv["ground_accel"]) * 0.5 * DT)
+		var hv := Vector3(f.vel.x, 0.0, f.vel.z).move_toward(Vector3.ZERO, float(mv["ground_accel"]) * 0.5 * f.ground_friction * DT)
 		f.vel.x = hv.x
 		f.vel.z = hv.z
 	# En l'air (après un launcher), on reste sonné jusqu'à l'atterrissage.
@@ -374,7 +406,7 @@ static func _step_walk(f: FighterState, mv: Dictionary, wish: Vector3, speed_mul
 	var speed: float = (mv["crouch_speed"] if crouched else mv["walk_speed"]) * speed_mult
 	var hv := Vector3(f.vel.x, 0.0, f.vel.z)
 	if f.on_ground:
-		hv = hv.move_toward(wish * speed, float(mv["ground_accel"]) * DT)
+		hv = hv.move_toward(wish * speed, float(mv["ground_accel"]) * f.ground_friction * DT)
 	elif wish != Vector3.ZERO:
 		# En l'air : on peut corriger sa trajectoire, sans freiner si on ne touche à rien.
 		hv = hv.move_toward(wish * speed, float(mv["air_accel"]) * DT)
@@ -447,8 +479,8 @@ static func _integrate(f: FighterState, mv: Dictionary) -> void:
 	if not f.on_ground and f.action != FighterState.Action.DASH:
 		f.vel.y -= float(mv["gravity"]) * DT
 	f.pos += f.vel * DT
-	if f.pos.y <= 0.0:
-		f.pos.y = 0.0
+	if f.pos.y <= f.floor_y:
+		f.pos.y = f.floor_y
 		if f.vel.y < 0.0:
 			f.vel.y = 0.0
 		f.on_ground = true

@@ -8,13 +8,15 @@ var tick: int = 0
 var fighters: Array[FighterState] = []
 var movesets: Array[MoveSet] = []        ## données (pas de l'état) : l'arme de chaque combattant
 var training_dummies: Array[int] = []    ## combattants qui régénèrent leur vie
+var map: MapData                         ## données (pas de l'état) : la map
 
 ## Événements du dernier tick (pour les effets visuels/sonores). Ce n'est PAS de l'état.
 var events: Array = []
 
 
-func _init(config: Dictionary) -> void:
+func _init(config: Dictionary, map_data: MapData = null) -> void:
 	cfg = config
+	map = map_data if map_data != null else MapData.new()
 
 
 func add_fighter(pos: Vector3, yaw_radians: float, moves: MoveSet) -> FighterState:
@@ -24,6 +26,7 @@ func add_fighter(pos: Vector3, yaw_radians: float, moves: MoveSet) -> FighterSta
 	f.yaw = InputFrame.yaw_to_int(yaw_radians)
 	f.max_hp = int(cfg["fighter"]["max_hp"])
 	f.hp = f.max_hp
+	f.potions_left = int(cfg.get("potion", {}).get("uses", 1))
 	fighters.append(f)
 	movesets.append(moves)
 	return f
@@ -32,12 +35,20 @@ func add_fighter(pos: Vector3, yaw_radians: float, moves: MoveSet) -> FighterSta
 ## inputs[i] = InputFrame du combattant i pour ce tick.
 func step(inputs: Array) -> void:
 	events.clear()
+	for f in fighters:
+		f.floor_y = map.floor_at(f.pos)
+		f.ground_friction = map.friction_at(f.pos)
 	for i in fighters.size():
 		FighterLogic.step(fighters[i], inputs[i], cfg, movesets[i])
 	_emit_action_events()
+	_check_clash()
+	_check_wall_bounce()
 	_resolve_hits()
+	_resolve_bind()
 	_resolve_pushboxes()
+	_resolve_obstacles()
 	_clamp_to_arena()
+	_apply_hazards()
 	_training_regen()
 	tick += 1
 
@@ -188,10 +199,18 @@ func _resolve_contact(i: int, j: int, hb: Dictionary, capsule: Array) -> void:
 			"splash": tags.has("splash"), "issen": att.issen}
 	var faces := _faces(def, att)
 
-	# 0) Posture Iai : une attaque LAME de face déclenche le contre automatique.
+	# 0) Contres automatiques : posture Iai (attaque LAME de face) et dos tourné (toute attaque).
 	if def.in_stance and faces and button != "pommel":
-		_stance_counter(def, att, j, i, info)
+		var dm0 := movesets[j]
+		_counter_strike(def, att, j, i, info, float(dm0.mech("stance_counter_damage", 120)),
+				int(dm0.mech("stance_counter_stun", 30)), int(dm0.mech("stance_counter_hitstop", 16)), "iai", true)
 		return
+	if def.action == FighterState.Action.ATTACK:
+		var dmc := movesets[j].get_move(def.move_id)
+		if not dmc.is_empty() and MoveSet.in_range(dmc["auto_counter"], def.move_tick):
+			_counter_strike(def, att, j, i, info, float(dmc["counter_damage"]), int(dmc["counter_stun"]),
+					int(dmc["counter_hitstop"]), "back", false)
+			return
 
 	# 1) Parry parfait : appui sur E juste avant l'impact.
 	if def.can_defend() and faces and def.parry_timer > 0:
@@ -215,16 +234,17 @@ func _resolve_contact(i: int, j: int, hb: Dictionary, capsule: Array) -> void:
 	_hit(att, def, i, j, hb, m, fwd, info)
 
 
-## Contre automatique depuis la posture Iai : on dégaine et on frappe l'attaquant.
-func _stance_counter(def: FighterState, att: FighterState, d_i: int, a_i: int, info: Dictionary) -> void:
+## Contre automatique (posture Iai, dos tourné...) : le défenseur frappe l'attaquant.
+func _counter_strike(def: FighterState, att: FighterState, d_i: int, a_i: int, info: Dictionary,
+		base_damage: float, stun: int, stop: int, style: String, use_edge: bool) -> void:
 	var ms := movesets[d_i]
 	var m := ms.get_move(def.move_id)
-	var dmg := roundi(float(ms.mech("stance_counter_damage", 120)) * KatanaMechanic.damage_mult(def, ms, m))
-	var stun := int(ms.mech("stance_counter_stun", 30))
-	var stop := int(ms.mech("stance_counter_hitstop", 16))
+	var mult := KatanaMechanic.damage_mult(def, ms, m) if use_edge else 1.0
+	var dmg := roundi(base_damage * mult)
 	def.in_stance = false
-	def.move_tick = int(m["startup"]) + int(m["active"])   # on passe directement à la fin de la dégaine
-	var fwd := def.forward()
+	def.move_tick = int(m["startup"]) + int(m["active"])   # on passe directement à la fin du coup
+	var fwd := Vector3(att.pos.x - def.pos.x, 0.0, att.pos.z - def.pos.z)
+	fwd = fwd.normalized() if fwd.length() > 0.01 else def.forward()
 	if att.action == FighterState.Action.ATTACK:
 		FighterLogic.end_move(att)
 	_reset_combo_if_fresh(att)
@@ -239,8 +259,8 @@ func _stance_counter(def: FighterState, att: FighterState, d_i: int, a_i: int, i
 	att.hitstop = stop
 	def.hitstop = stop
 	KatanaMechanic.gain_zanshin(def, ms)
-	info.merge({"type": "iai_counter", "attacker": d_i, "defender": a_i, "hitstop": stop,
-			"damage": dmg, "pos": att.pos + Vector3(0, 1.2, 0), "dir": fwd, "guard": def.guard})
+	info.merge({"type": "iai_counter", "attacker": d_i, "defender": a_i, "hitstop": stop, "style": style,
+			"damage": dmg, "pos": att.pos + Vector3(0, 1.2, 0), "dir": fwd, "guard": def.guard}, true)
 	events.append(info)
 
 
@@ -402,6 +422,185 @@ func _impact_point(def: FighterState, capsule: Array) -> Vector3:
 	return core + (out.normalized() * r if out.length() > 0.01 else Vector3.ZERO)
 
 
+## CLASH : deux lames actives qui se touchent -> les deux combattants entrent en BIND.
+func _check_clash() -> void:
+	if fighters.size() < 2:
+		return
+	var a := fighters[0]
+	var b := fighters[1]
+	if a.hitstop > 0 or b.hitstop > 0:
+		return
+	if _button_of(0) != "blade" or _button_of(1) != "blade" or a.issen or b.issen:
+		return
+	var ha := active_hitboxes(0)
+	var hb := active_hitboxes(1)
+	for pa in ha:
+		for pb in hb:
+			if Combat.capsules_overlap(pa[0], pb[0]):
+				_start_bind(a, b)
+				return
+
+
+func _start_bind(a: FighterState, b: FighterState) -> void:
+	var cc: Dictionary = cfg["clash"]
+	var mid := (a.pos + b.pos) * 0.5
+	var d := Vector3(b.pos.x - a.pos.x, 0.0, b.pos.z - a.pos.z)
+	d = d.normalized() if d.length() > 0.01 else a.forward()
+	var half_d := float(cc["bind_distance"]) * 0.5
+	for f in [a, b]:
+		FighterLogic.end_move(f)
+		f.action = FighterState.Action.BIND
+		f.action_tick = 0
+		f.bind_presses = 0
+		f.hitstop = int(cc["hitstop"])
+		f.vel = Vector3.ZERO
+	a.pos = Vector3(mid.x - d.x * half_d, a.pos.y, mid.z - d.z * half_d)
+	b.pos = Vector3(mid.x + d.x * half_d, b.pos.y, mid.z + d.z * half_d)
+	a.yaw = InputFrame.yaw_to_int(atan2(-d.x, -d.z))
+	b.yaw = InputFrame.yaw_to_int(atan2(d.x, d.z))
+	events.append({"type": "clash", "pos": mid + Vector3(0, 1.4, 0), "dir": d})
+
+
+func _resolve_bind() -> void:
+	if fighters.size() < 2:
+		return
+	var a := fighters[0]
+	var b := fighters[1]
+	var a_in := a.action == FighterState.Action.BIND
+	var b_in := b.action == FighterState.Action.BIND
+	if not a_in and not b_in:
+		return
+	if a_in != b_in:
+		# Sécurité : un bind ne se joue qu'à deux.
+		for f in [a, b]:
+			if f.action == FighterState.Action.BIND:
+				f.action = FighterState.Action.NONE
+		return
+	if a.hitstop > 0:
+		return
+	var cc: Dictionary = cfg["clash"]
+	var diff := a.bind_presses - b.bind_presses
+	if absi(diff) < int(cc["bind_lead"]) and a.action_tick < int(cc["bind_max_ticks"]):
+		return
+	var d := Vector3(b.pos.x - a.pos.x, 0.0, b.pos.z - a.pos.z).normalized()
+	var winner := -1
+	if diff > 0:
+		winner = 0
+	elif diff < 0:
+		winner = 1
+	for i in 2:
+		var f := fighters[i]
+		var away := -d if i == 0 else d
+		f.action_tick = 0
+		if winner == -1 or i == winner:
+			f.action = FighterState.Action.NONE
+			var push := float(cc["tie_push"]) if winner == -1 else 2.0
+			f.vel = Vector3(away.x * push, 0.0, away.z * push)
+		else:
+			f.action = FighterState.Action.HITSTUN
+			f.hitstun = int(cc["loser_stun"])
+			f.combo_hits = 0
+			f.combo_damage = 0
+			f.vel = Vector3(away.x * float(cc["loser_push"]), 0.0, away.z * float(cc["loser_push"]))
+	events.append({"type": "bind_end", "winner": winner, "pos": (a.pos + b.pos) * 0.5 + Vector3(0, 1.4, 0), "dir": d})
+
+
+## Une LAME qui heurte un pilier rebondit : le coup s'arrête net.
+func _check_wall_bounce() -> void:
+	if map.boxes.is_empty():
+		return
+	var wb: Dictionary = cfg.get("wall_bounce", {})
+	for i in fighters.size():
+		var f := fighters[i]
+		if f.action != FighterState.Action.ATTACK or f.hitstop > 0 or f.issen or f.hit_groups != 0:
+			continue
+		if _button_of(i) != "blade":
+			continue
+		for pair in active_hitboxes(i):
+			var contact = map.capsule_hits_obstacle(pair[0])
+			if contact != null:
+				FighterLogic.end_move(f)
+				f.action = FighterState.Action.PARRIED
+				f.hitstun = int(wb.get("stun", 16))
+				f.hitstop = int(wb.get("hitstop", 6))
+				f.vel.x *= 0.2
+				f.vel.z *= 0.2
+				events.append({"type": "wall_bounce", "fighter": i, "pos": contact, "dir": -f.forward()})
+				break
+
+
+## Murs, piliers, murets : on ne passe pas au travers (mais on peut monter sur les petits).
+func _resolve_obstacles() -> void:
+	var r: float = cfg["fighter"]["radius"]
+	var h: float = cfg["fighter"]["height"]
+	for f in fighters:
+		for box in map.boxes:
+			var mn: Vector3 = box["min"]
+			var mx: Vector3 = box["max"]
+			if f.pos.y >= mx.y - 0.05 or f.pos.y + h <= mn.y:
+				continue
+			if mx.y - f.pos.y <= MapData.STEP_HEIGHT:
+				continue   # assez bas pour monter dessus en marchant
+			var cx := clampf(f.pos.x, mn.x, mx.x)
+			var cz := clampf(f.pos.z, mn.z, mx.z)
+			var d := Vector2(f.pos.x - cx, f.pos.z - cz)
+			var dist := d.length()
+			var n := Vector2.ZERO
+			var push := 0.0
+			if dist > 0.0001:
+				if dist >= r:
+					continue
+				n = d / dist
+				push = r - dist
+			else:
+				# Centre à l'intérieur : on sort par le côté le plus proche.
+				var opts := [Vector3(f.pos.x - mn.x, -1, 0), Vector3(mx.x - f.pos.x, 1, 0),
+						Vector3(f.pos.z - mn.z, 0, -1), Vector3(mx.z - f.pos.z, 0, 1)]
+				var best: Vector3 = opts[0]
+				for o in opts:
+					if o.x < best.x:
+						best = o
+				n = Vector2(best.y, best.z)
+				push = best.x + r
+			f.pos.x += n.x * push
+			f.pos.z += n.y * push
+			var vn := f.vel.x * n.x + f.vel.z * n.y
+			if vn < 0.0:
+				f.vel.x -= vn * n.x
+				f.vel.z -= vn * n.y
+
+
+## Lave (dégâts au sol) et geysers (éruptions régulières et annoncées).
+func _apply_hazards() -> void:
+	for i in fighters.size():
+		var f := fighters[i]
+		if f.hitstop > 0:
+			continue
+		for z in map.zones:
+			if z["type"] != "lava" or not f.on_ground or f.pos.y > 0.05:
+				continue
+			if map.zone_contains(z, f.pos) and tick % int(z["interval"]) == 0:
+				f.hp = maxi(f.hp - int(z["damage"]), 0)
+				f.ticks_since_hit = 0
+				if tick % (int(z["interval"]) * 4) == 0:
+					events.append({"type": "burn", "fighter": i, "pos": f.pos + Vector3(0, 0.3, 0)})
+		for g in map.geysers:
+			if not map.geyser_erupts_now(g, tick):
+				continue
+			var gp: Vector2 = g["pos"]
+			if Vector2(f.pos.x, f.pos.z).distance_to(gp) <= float(g["radius"]) and f.pos.y < 1.5:
+				if f.action == FighterState.Action.ATTACK:
+					FighterLogic.end_move(f)
+				_reset_combo_if_fresh(f)
+				f.hp = maxi(f.hp - int(g["damage"]), 0)
+				f.ticks_since_hit = 0
+				f.action = FighterState.Action.HITSTUN
+				f.hitstun = 30
+				f.vel.y = float(g["launch"])
+				f.on_ground = false
+				events.append({"type": "geyser_hit", "fighter": i, "pos": f.pos + Vector3(0, 0.5, 0)})
+
+
 ## Les combattants ne peuvent pas se traverser (sauf certains coups).
 func _resolve_pushboxes() -> void:
 	var r: float = cfg["fighter"]["radius"]
@@ -428,10 +627,9 @@ func _resolve_pushboxes() -> void:
 
 
 func _clamp_to_arena() -> void:
-	var lim: float = float(cfg["arena"]["half_size"]) - float(cfg["fighter"]["radius"])
+	var r: float = cfg["fighter"]["radius"]
 	for f in fighters:
-		f.pos.x = clampf(f.pos.x, -lim, lim)
-		f.pos.z = clampf(f.pos.z, -lim, lim)
+		f.pos = map.clamp_pos(f.pos, r)
 
 
 func _training_regen() -> void:
@@ -441,3 +639,4 @@ func _training_regen() -> void:
 		if f.ticks_since_hit > delay and f.action != FighterState.Action.HITSTUN:
 			f.hp = f.max_hp
 			f.burst_gauge = int(cfg["burst"]["gauge_max"])
+			f.potions_left = int(cfg.get("potion", {}).get("uses", 1))

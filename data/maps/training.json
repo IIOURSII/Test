@@ -1,0 +1,9 @@
+{
+  "_aide": "Map de DEBUG (terrain d'entraînement plat). Format commun à toutes les maps : voir colisee.json.",
+  "name": "Terrain d'entraînement", "subtitle": "Debug", "kanji": "道", "theme": "training", "debug_only": true,
+  "desc": "Terrain plat sans obstacle, pour tester.",
+  "bounds": {"type": "rect", "half_x": 14, "half_z": 14},
+  "spawn_distance": 2.5,
+  "obstacles": [], "zones": [], "geysers": [],
+  "visual": {}
+}

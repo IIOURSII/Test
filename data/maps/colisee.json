@@ -1,0 +1,13 @@
+{
+  "_aide": "FORMAT D'UNE MAP. bounds : 'rect' (half_x, half_z) ou 'circle' (radius). spawn_distance : les 2 joueurs apparaissent à (0,0,+d) et (0,0,-d). obstacles : pos = centre au sol [x, y, z], size = [largeur, hauteur, profondeur] ; bounce = une lame qui le touche rebondit ; look = apparence. zones : type 'lava' (damage tous les interval ticks) ou 'slippery' (friction < 1), shape 'circle' (radius) ou 'rect' (half_x, half_z). geysers : period/offset/warn/active en ticks. SYMÉTRIE : chaque élément est dupliqué automatiquement en (-x, -z) sauf si \"mirror\": false.",
+  "name": "Le Colisée", "subtitle": "Arène impériale", "kanji": "闘", "theme": "colisee",
+  "desc": "Arène ronde : aucun coin où se faire acculer. Quatre colonnes : les grands balayages s'y brisent, les estocs passent. Tourner autour d'une colonne est une feinte en soi.",
+  "bounds": {"type": "circle", "radius": 13},
+  "spawn_distance": 5,
+  "obstacles": [
+    {"pos": [4.6, 0, 4.6], "size": [1.3, 4.5, 1.3], "look": "column"},
+    {"pos": [4.6, 0, -4.6], "size": [1.3, 4.5, 1.3], "look": "column"}
+  ],
+  "zones": [], "geysers": [],
+  "visual": {}
+}
