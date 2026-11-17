@@ -1,0 +1,17 @@
+{
+  "name": "Marktplatz", "subtitle": "Place du marché · Allemagne médiévale", "kanji": "市", "theme": "fachwerk",
+  "desc": "Une place à colombages éclairée de lanternes japonaises. La fontaine centrale casse la ligne droite et son pourtour de pavés mouillés fait glisser (les dashs s'y allongent). Les étals forment des couloirs : parfaits pour couper un angle... ou s'y faire coincer.",
+  "bounds": {"type": "rect", "half_x": 18, "half_z": 18},
+  "spawn_distance": 8,
+  "obstacles": [
+    {"pos": [0, 0, 0], "size": [2.6, 1.0, 2.6], "look": "fountain"},
+    {"pos": [8.5, 0, 5.5], "size": [3.2, 2.3, 1.6], "look": "stall"},
+    {"pos": [-8.5, 0, 5.5], "size": [3.2, 2.3, 1.6], "look": "stall"},
+    {"pos": [13.5, 0, -1], "size": [1.2, 1.2, 1.2], "look": "barrels"}
+  ],
+  "zones": [
+    {"type": "slippery", "shape": "circle", "pos": [0, 0, 0], "radius": 3.8, "friction": 0.45, "mirror": false}
+  ],
+  "geysers": [],
+  "visual": {}
+}

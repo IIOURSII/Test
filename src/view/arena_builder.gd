@@ -24,6 +24,9 @@ const THEMES := {
 	"banque": {"sky": [Color(0.02, 0.02, 0.03), Color(0.06, 0.05, 0.04)], "fog": Color(0.08, 0.06, 0.03), "fog_d": 0.03,
 		"sun": Color(1.0, 0.75, 0.4), "sun_e": 0.25, "sun_rot": Vector2(-80, 0), "amb": 0.25,
 		"floor": [Color(0.24, 0.22, 0.2), Color(0.2, 0.18, 0.17)], "pattern": "tiles", "wall": Color(0.2, 0.19, 0.18)},
+	"fachwerk": {"sky": [Color(0.35, 0.42, 0.55), Color(0.85, 0.72, 0.6)], "fog": Color(0.55, 0.52, 0.5), "fog_d": 0.018,
+		"sun": Color(1.0, 0.86, 0.7), "sun_e": 0.9, "sun_rot": Vector2(-38, 70), "amb": 0.55,
+		"floor": [Color(0.45, 0.43, 0.4), Color(0.36, 0.34, 0.32)], "pattern": "cobble", "wall": Color(0.4, 0.3, 0.22)},
 	"chateau": {"sky": [Color(0.04, 0.05, 0.08), Color(0.12, 0.14, 0.2)], "fog": Color(0.07, 0.08, 0.12), "fog_d": 0.025,
 		"sun": Color(0.7, 0.8, 1.0), "sun_e": 0.3, "sun_rot": Vector2(-55, 60), "amb": 0.3,
 		"floor": [Color(0.38, 0.37, 0.36), Color(0.32, 0.31, 0.3)], "pattern": "tiles", "wall": Color(0.33, 0.31, 0.3)},
@@ -53,6 +56,7 @@ static func build(parent: Node3D, map: MapData) -> MapView:
 		"volcan": _decor_volcan(view, map)
 		"banque": _decor_banque(view, map)
 		"chateau": _decor_chateau(view, map)
+		"fachwerk": _decor_fachwerk(view, map)
 	return view
 
 
@@ -114,6 +118,13 @@ static func _floor_texture(c1: Color, c2: Color, pattern: String) -> ImageTextur
 					col = c1.lerp(c2, rng.randf())
 					if rng.randf() < 0.06:
 						col = c1.lightened(0.25)
+				"cobble":
+					# Pavés : blocs décalés une rangée sur deux, joints sombres.
+					var row := y / 8
+					var ox := (row % 2) * 6
+					col = c1.lerp(c2, float((((x + ox) / 12) * 7 + row * 3) % 5) / 4.0)
+					if y % 8 == 0 or (x + ox) % 12 == 0:
+						col = c2.darkened(0.45)
 				"stone":
 					col = c1.lerp(c2, rng.randf())
 					if rng.randf() < 0.03:
@@ -226,10 +237,30 @@ static func _obstacle(parent: Node3D, b: Dictionary, theme: String) -> void:
 				var band := MeshUtil.box(Vector3(size.x + 0.08, 0.25, size.z + 0.08), Color(0.9, 0.7, 0.25))
 				(band.material_override as StandardMaterial3D).metallic = 0.9
 				_add(root, band, Vector3(0, hy, 0))
+		"fountain":
+			_add(root, MeshUtil.cylinder(r, size.y * 0.6, Color(0.55, 0.53, 0.5)), Vector3(0, size.y * 0.3, 0))
+			_add(root, MeshUtil.cylinder(r * 0.85, 0.05, Color(0.2, 0.35, 0.45)), Vector3(0, size.y * 0.6 + 0.01, 0))
+			_add(root, MeshUtil.cylinder(0.15, 1.6, Color(0.5, 0.48, 0.46)), Vector3(0, size.y + 0.4, 0))
+			_add(root, MeshUtil.cylinder(0.45, 0.12, Color(0.55, 0.53, 0.5)), Vector3(0, size.y + 1.0, 0))
+			_add(root, MeshUtil.sphere(0.18, Color(0.85, 0.7, 0.3)), Vector3(0, size.y + 1.35, 0))
+		"stall":
+			for sx in [-1.0, 1.0]:
+				for sz in [-1.0, 1.0]:
+					_add(root, MeshUtil.box(Vector3(0.1, size.y, 0.1), Color(0.3, 0.2, 0.12)), Vector3(sx * size.x * 0.45, size.y * 0.5, sz * size.z * 0.45))
+			_add(root, MeshUtil.box(Vector3(size.x, 0.9, size.z * 0.8), Color(0.45, 0.3, 0.18)), Vector3(0, 0.45, 0))
+			for k in 4:
+				var stripe := MeshUtil.box(Vector3(size.x * 0.25, 0.08, size.z * 1.15), Color(0.75, 0.12, 0.1) if k % 2 == 0 else Color(0.92, 0.88, 0.8))
+				stripe.rotation.x = 0.25
+				_add(root, stripe, Vector3(-size.x * 0.375 + k * size.x * 0.25, size.y, 0))
+			for k in 3:
+				_add(root, MeshUtil.sphere(0.16, [Color(0.8, 0.3, 0.15), Color(0.6, 0.65, 0.2), Color(0.85, 0.7, 0.2)][k]), Vector3(-0.6 + k * 0.6, 1.0, 0))
 		"castle_pillar":
 			_add(root, MeshUtil.box(size, Color(0.42, 0.4, 0.38)), Vector3(0, size.y * 0.5, 0))
 			_add(root, MeshUtil.box(Vector3(size.x * 1.3, 0.35, size.z * 1.3), Color(0.35, 0.33, 0.31)), Vector3(0, 0.17, 0))
-			var banner := MeshUtil.box(Vector3(0.7, 1.8, 0.05), Color(0.55, 0.06, 0.08))
+			var banner := MeshUtil.box(Vector3(0.7, 1.8, 0.05), Color(0.1, 0.09, 0.1))   # bannière noir et or
+			var band := MeshUtil.box(Vector3(0.72, 0.35, 0.06), Color(0.85, 0.66, 0.2))
+			band.position = Vector3(0, 0.2, 0)
+			banner.add_child(band)
 			var face := -signf(c.x) if absf(c.x) > 0.1 else 1.0
 			banner.rotation.y = PI / 2.0
 			_add(root, banner, Vector3(face * (size.x * 0.5 + 0.03), size.y * 0.6, 0))
@@ -467,3 +498,72 @@ static func _decor_chateau(p: Node3D, map: MapData) -> void:
 			var a := TAU * float(k) / 6.0
 			_add(p, MeshUtil.box(Vector3(0.1, 0.25, 0.1), Color(1.0, 0.8, 0.5), 3.0), Vector3(cos(a) * 1.1, 6.75, z + sin(a) * 1.1))
 		_light(p, Vector3(0, 6.2, z), Color(1.0, 0.75, 0.45), 2.5, 12.0)
+
+
+## Place de marché allemande à colombages, avec guirlandes de lanternes japonaises (la fusion).
+static func _decor_fachwerk(p: Node3D, map: MapData) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 31
+	var plaster := Color(0.9, 0.86, 0.76)
+	var timber := Color(0.22, 0.14, 0.09)
+	var roofs := [Color(0.55, 0.2, 0.12), Color(0.35, 0.18, 0.12), Color(0.25, 0.22, 0.25)]
+	for side in 4:
+		var along_x := side < 2
+		var sgn := 1.0 if side % 2 == 0 else -1.0
+		var span := (map.half.x if along_x else map.half.y)
+		var t := -span - 1.0
+		while t < span + 1.0:
+			var w := rng.randf_range(3.5, 5.0)
+			var h := rng.randf_range(5.5, 8.0)
+			var c := t + w * 0.5
+			var depth := 4.0
+			var pos := Vector3(c, 0, sgn * (map.half.y + 0.5 + depth * 0.5)) if along_x else Vector3(sgn * (map.half.x + 0.5 + depth * 0.5), 0, c)
+			var house := Node3D.new()
+			house.position = pos
+			if not along_x:
+				house.rotation.y = PI / 2.0
+			p.add_child(house)
+			_add(house, MeshUtil.box(Vector3(w - 0.2, h, depth), plaster), Vector3(0, h * 0.5, 0))
+			# Colombages : poutres horizontales, poteaux et croix de Saint-André sur la façade.
+			var face := -sgn * depth * 0.5 - 0.03 * sgn if along_x else -sgn * depth * 0.5 - 0.03 * sgn
+			for hy in [0.15, h * 0.45, h - 0.15]:
+				_add(house, MeshUtil.box(Vector3(w - 0.2, 0.18, 0.08), timber), Vector3(0, hy, face))
+			for px in [-0.5, 0.0, 0.5]:
+				_add(house, MeshUtil.box(Vector3(0.16, h, 0.08), timber), Vector3(px * (w - 0.4), h * 0.5, face))
+			for qx in [-0.25, 0.25]:
+				for sd in [-1.0, 1.0]:
+					var brace := MeshUtil.box(Vector3(0.12, h * 0.55, 0.08), timber)
+					brace.rotation.z = 0.55 * sd
+					_add(house, brace, Vector3(qx * (w - 0.4), h * 0.72, face))
+			for wx in [-0.25, 0.25]:
+				_add(house, MeshUtil.box(Vector3(0.7, 0.9, 0.06), Color(1.0, 0.8, 0.45), 1.2), Vector3(wx * (w - 0.4), h * 0.25, face - 0.02 * sgn))
+			var roof := MeshUtil.box(Vector3(w, 0.25, depth * 0.78), roofs[rng.randi() % roofs.size()])
+			roof.rotation.x = 0.75
+			_add(house, roof, Vector3(0, h + depth * 0.25, -depth * 0.22))
+			var roof2 := MeshUtil.box(Vector3(w, 0.25, depth * 0.78), roofs[rng.randi() % roofs.size()])
+			roof2.rotation.x = -0.75
+			_add(house, roof2, Vector3(0, h + depth * 0.25, depth * 0.22))
+			t += w
+	# Clocher au loin (des deux côtés : symétrie).
+	for s in [-1.0, 1.0]:
+		var base := Vector3(s * 8.0, 0, s * (map.half.y + 16.0))
+		_add(p, MeshUtil.box(Vector3(5, 18, 5), Color(0.6, 0.57, 0.52)), base + Vector3(0, 9, 0))
+		var spire := MeshUtil.cylinder(0.0, 9.0, Color(0.2, 0.3, 0.28))
+		(spire.mesh as CylinderMesh).bottom_radius = 3.4
+		_add(p, spire, base + Vector3(0, 22.5, 0))
+	# Guirlandes de lanternes japonaises tendues au-dessus de la place.
+	for k in 5:
+		var z := lerpf(-map.half.y * 0.8, map.half.y * 0.8, float(k) / 4.0)
+		for i in 9:
+			var x := lerpf(-map.half.x, map.half.x, float(i) / 8.0)
+			var sag := 6.0 - 1.2 * sin(float(i) / 8.0 * PI)
+			var lantern := MeshUtil.sphere(0.22, Color(0.95, 0.3, 0.15) if (i + k) % 2 == 0 else Color(1.0, 0.85, 0.5), 2.2)
+			lantern.scale = Vector3(1, 1.3, 1)
+			_add(p, lantern, Vector3(x, sag, z))
+		_light(p, Vector3(0, 5.0, z), Color(1.0, 0.65, 0.35), 1.6, 9.0)
+	# Bannières noir et or (blason) aux coins.
+	for c in [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
+		var pole := Vector3(c.x * (map.half.x - 0.6), 0, c.y * (map.half.y - 0.6))
+		_add(p, MeshUtil.box(Vector3(0.12, 5.0, 0.12), timber), pole + Vector3(0, 2.5, 0))
+		_add(p, MeshUtil.box(Vector3(0.05, 2.0, 1.0), Color(0.1, 0.09, 0.1)), pole + Vector3(0, 3.8, 0.55))
+		_add(p, MeshUtil.box(Vector3(0.06, 0.5, 1.02), Color(0.85, 0.66, 0.2)), pole + Vector3(0, 3.6, 0.55))

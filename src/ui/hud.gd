@@ -113,7 +113,8 @@ func setup() -> void:
 	popup_kanji.size = Vector2(130, 130)
 	popup_box.add_child(popup_kanji)
 
-	popup_label = _make_label(22)
+	popup_label = _make_label(30)
+	popup_label.add_theme_font_override("font", UiStyle.gothic())
 	popup_label.add_theme_constant_override("outline_size", 6)
 	popup_label.position = Vector2(148, 52)
 	popup_label.size = Vector2(300, 40)
@@ -431,10 +432,7 @@ func record_input(frame: InputFrame) -> void:
 
 ## Coup de tampon : sceau rouge + kanji, et le nom en petites capitales espacées.
 func popup(text: String, color: Color, kanji: String = "") -> void:
-	var spaced := ""
-	for c in text:
-		spaced += c + " "
-	popup_label.text = spaced.strip_edges()
+	popup_label.text = text.capitalize() if text == text.to_upper() else text
 	popup_label.add_theme_color_override("font_color", color.lightened(0.35))
 	popup_kanji.text = kanji
 	popup_kanji.add_theme_font_size_override("font_size", 92 if kanji.length() <= 1 else 54)

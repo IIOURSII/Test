@@ -101,8 +101,8 @@ func setup(cfg: Dictionary, sleeve: Color = Color(0.22, 0.26, 0.45), accent: Col
 	gourd.visible = false
 	arms_camera.add_child(gourd)
 
-	# Gants sombres, manches du manteau, bandes de poignet à la couleur de l'écharpe.
-	var glove := Color(0.12, 0.1, 0.1)
+	# Gantelets d'acier, manches du manteau, crevés et bandes de poignet à la couleur de l'écharpe.
+	var glove := Color(0.5, 0.52, 0.58)
 	hand_main = MeshUtil.sphere(0.05, glove)
 	hand_off = MeshUtil.sphere(0.05, glove)
 	arms.add_child(hand_main)
@@ -111,8 +111,8 @@ func setup(cfg: Dictionary, sleeve: Color = Color(0.22, 0.26, 0.45), accent: Col
 	forearm_off = MeshUtil.box(Vector3(0.1, 0.1, 1.0), sleeve)
 	arms.add_child(forearm_main)
 	arms.add_child(forearm_off)
-	wrap_main = MeshUtil.box(Vector3(0.085, 0.085, 0.06), accent)
-	wrap_off = MeshUtil.box(Vector3(0.085, 0.085, 0.06), accent)
+	wrap_main = MeshUtil.box(Vector3(0.13, 0.13, 0.12), accent)
+	wrap_off = MeshUtil.box(Vector3(0.13, 0.13, 0.12), accent)
 	arms.add_child(wrap_main)
 	arms.add_child(wrap_off)
 
@@ -341,7 +341,7 @@ func _place_wrap(w: MeshInstance3D, hand: Vector3, elbow: Vector3) -> void:
 	var d := (elbow - hand).normalized()
 	if d.length() < 0.5:
 		return
-	w.transform = Transform3D(Basis.looking_at(d, Vector3.UP), hand + d * 0.08)
+	w.transform = Transform3D(Basis.looking_at(d, Vector3.UP), hand + d * 0.11)   # manchette bouffante
 
 
 func _place_forearm(arm: MeshInstance3D, hand: Vector3, elbow: Vector3) -> void:

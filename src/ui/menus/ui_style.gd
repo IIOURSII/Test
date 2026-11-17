@@ -1,6 +1,7 @@
 class_name UiStyle
 extends RefCounted
-## Identité visuelle des écrans : encre, papier, rouge sceau, or. Typo serif + kanji.
+## Identité visuelle des écrans — FUSION JAPON / ALLEMAGNE MÉDIÉVALE :
+## écriture gothique (Grenze Gotisch, licence OFL) + kanji, blasons, encre, papier, rouge sceau, or.
 
 const INK := Color(0.045, 0.035, 0.04)
 const PAPER := Color(0.95, 0.91, 0.83)
@@ -11,6 +12,7 @@ const MUTED := Color(0.55, 0.51, 0.47)
 static var _cjk: SystemFont
 static var _serif: SystemFont
 static var _hanko: Shader
+static var _gothic: Font
 
 
 static func cjk() -> Font:
@@ -29,6 +31,25 @@ static func serif() -> Font:
 				"Noto Serif", "DejaVu Serif", "serif"])
 		_serif.font_weight = 600
 	return _serif
+
+
+## Écriture gothique (Fraktur) pour les titres et menus.
+static func gothic() -> Font:
+	if _gothic == null:
+		var base = load("res://assets/fonts/GrenzeGotisch.ttf")
+		if base is Font:
+			var fv := FontVariation.new()
+			fv.base_font = base
+			fv.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 640}
+			_gothic = fv
+		else:
+			_gothic = serif()
+	return _gothic
+
+
+## Blason allemand portant un kanji.
+static func shield(kanji: String, size: float, a: Color = Color(0.08, 0.07, 0.08), b: Color = Color(0.72, 0.1, 0.1)) -> Control:
+	return ShieldEmblem.new().setup(kanji, size, a, b)
 
 
 ## "DUEL" -> "D U E L"
@@ -86,15 +107,15 @@ static func box_style(bg: Color, border: Color = Color(0, 0, 0, 0), width: int =
 	return s
 
 
-## Bouton de menu : texte en capitales espacées, losange rouge au survol, version "verrouillée".
+## Bouton de menu : écriture gothique, losange rouge au survol, version "verrouillée".
 static func menu_button(text: String, hint: String = "", locked: bool = false, font_size: int = 30) -> Button:
 	var b := Button.new()
-	b.text = spaced(text.to_upper())
+	b.text = text
 	b.flat = true
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_override("font", serif())
-	b.add_theme_font_size_override("font_size", font_size)
+	b.add_theme_font_override("font", gothic())
+	b.add_theme_font_size_override("font_size", int(font_size * 1.15))
 	b.add_theme_color_override("font_color", MUTED if locked else PAPER)
 	b.add_theme_color_override("font_hover_color", MUTED if locked else Color(1.0, 0.82, 0.75))
 	b.add_theme_color_override("font_pressed_color", CRIMSON)

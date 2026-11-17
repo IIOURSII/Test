@@ -21,9 +21,9 @@ func setup(title: String, good: bool, score: Array, names: Array) -> void:
 	v.add_theme_constant_override("separation", 18)
 	root.add_child(v)
 	var seal_row := CenterContainer.new()
-	seal_row.add_child(UiStyle.seal("勝" if good else "負", 130, UiStyle.CRIMSON if good else UiStyle.MUTED.darkened(0.2)))
+	seal_row.add_child(UiStyle.shield("勝" if good else "負", 120, Color(0.08, 0.07, 0.08), UiStyle.CRIMSON if good else UiStyle.MUTED.darkened(0.3)))
 	v.add_child(seal_row)
-	var t := UiStyle.label(title, 64, UiStyle.PAPER)
+	var t := UiStyle.label(title, 80, UiStyle.PAPER, UiStyle.gothic())
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
 	var sc := UiStyle.label("%s   %d  —  %d   %s" % [names[0], score[0], score[1], names[1]], 22, UiStyle.GOLD)

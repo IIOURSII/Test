@@ -37,13 +37,13 @@ static func cylinder(radius: float, height: float, color: Color, emission: float
 	return mi
 
 
-static func sphere(radius: float, color: Color) -> MeshInstance3D:
+static func sphere(radius: float, color: Color, emission: float = 0.0) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var sm := SphereMesh.new()
 	sm.radius = radius
 	sm.height = radius * 2.0
 	mi.mesh = sm
-	mi.material_override = mat(color)
+	mi.material_override = mat(color, emission)
 	return mi
 
 

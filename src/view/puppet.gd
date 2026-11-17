@@ -1,6 +1,6 @@
 class_name Puppet
 extends Node3D
-## Samouraï "anime" en volumes cel-shadés, photographié en basse résolution pour devenir un SPRITE.
+## Samouraï-lansquenet (fusion Japon / Allemagne médiévale) en volumes cel-shadés, photographié en basse résolution pour devenir un SPRITE.
 ## Silhouette pensée pour se lire même en très gros pixels :
 ##   cheveux en pointes + queue de cheval, yeux lumineux (on voit où il regarde),
 ##   long manteau ouvert (haori) qui flotte, écharpe à deux pans qui traînent derrière,
@@ -14,6 +14,7 @@ var leg_r: Node3D
 var coat_back: Node3D
 var scarf_a: Node3D
 var scarf_b: Node3D
+var plume: Node3D
 var katana: Node3D
 var arm_r: MeshInstance3D
 var arm_l: MeshInstance3D
@@ -47,10 +48,20 @@ func setup(main_color: Color, accent: Color) -> void:
 	torso = _node(hips, Vector3(0, 0.02, 0))
 	_mesh(torso, MeshUtil.box(Vector3(0.34, 0.5, 0.22), inner), Vector3(0, 0.3, 0))                 # kimono
 	_mesh(torso, MeshUtil.box(Vector3(0.4, 0.09, 0.26), accent.darkened(0.35)), Vector3(0, 0.06, 0))  # obi
+	var steel := Color(0.6, 0.63, 0.7)
 	for sx in [-1.0, 1.0]:
 		_mesh(torso, MeshUtil.box(Vector3(0.14, 0.82, 0.27), main_color), Vector3(sx * 0.17, 0.2, 0))  # pans du manteau
-		var pad := _mesh(torso, MeshUtil.sphere(0.13, main_color), Vector3(sx * 0.25, 0.55, 0))         # épaules
-		pad.scale = Vector3(1.25, 0.8, 1.0)
+		# Manches bouffantes et tailladées (lansquenet) : bouffant + crevés de la couleur d'accent.
+		var pad := _mesh(torso, MeshUtil.sphere(0.14, main_color), Vector3(sx * 0.26, 0.53, 0))
+		pad.scale = Vector3(1.2, 1.0, 1.0)
+		for k in 3:
+			var slash := _mesh(torso, MeshUtil.box(Vector3(0.035, 0.22, 0.03), accent), Vector3(sx * 0.27 + (k - 1) * 0.06 * sx, 0.53, -0.13))
+			slash.rotation.z = 0.15 * sx
+	# Cuirasse d'acier bombée (Kürass) par-dessus le kimono.
+	var cuirass := _mesh(torso, MeshUtil.sphere(0.2, steel), Vector3(0, 0.34, -0.05))
+	cuirass.scale = Vector3(1.0, 1.25, 0.62)
+	(cuirass.material_override as StandardMaterial3D).metallic = 0.8
+	(cuirass.material_override as StandardMaterial3D).roughness = 0.35
 	coat_back = _node(torso, Vector3(0, 0.6, 0.13))
 	_mesh(coat_back, MeshUtil.box(Vector3(0.46, 0.95, 0.05), main_color), Vector3(0, -0.47, 0))       # dos du manteau
 
@@ -73,6 +84,14 @@ func setup(main_color: Color, accent: Color) -> void:
 	var tail := _mesh(head, MeshUtil.cylinder(0.0, 0.42, hair), Vector3(0, -0.06, 0.2))
 	(tail.mesh as CylinderMesh).bottom_radius = 0.05
 	tail.rotation.x = deg_to_rad(160.0)
+	# Béret de lansquenet incliné + grand panache de plumes (flotte comme l'écharpe).
+	var beret := _mesh(head, MeshUtil.cylinder(0.21, 0.05, hakama.darkened(0.3)), Vector3(0.04, 0.13, 0.0))
+	beret.rotation = Vector3(0.1, 0, -0.28)
+	plume = _node(head, Vector3(-0.12, 0.17, 0.02))
+	var plume_cols := [accent, Color(0.97, 0.95, 0.9), accent.lightened(0.3)]
+	for k in 3:
+		var fe := _mesh(plume, MeshUtil.box(Vector3(0.05, 0.02, 0.42), plume_cols[k]), Vector3(-0.03 * k, 0.02 * k, 0.2))
+		fe.rotation = Vector3(0.0, -0.15 * (k - 1), 0.0)
 	# Yeux lumineux (couleur de l'écharpe) : on voit tout de suite où il regarde.
 	for ex in [-0.05, 0.05]:
 		_mesh(head, MeshUtil.box(Vector3(0.055, 0.022, 0.02), accent.lightened(0.5), 2.5), Vector3(ex, 0.0, -0.135))
@@ -191,6 +210,7 @@ func apply(cur: FighterState, alpha: float, delta: float, moves: MoveSet, crouch
 	scarf_a.rotation = Vector3(1.2 - drag * 0.9 + flutter, 0.15 + local_vel.x * 0.05, 0)
 	scarf_b.rotation = Vector3(1.3 - drag * 0.85 - flutter, -0.15 + local_vel.x * 0.05, 0)
 	head.rotation.x = _lean.x * 0.5
+	plume.rotation = Vector3(-0.7 + drag * 0.5 + flutter * 0.8, 0.0, 0.3)
 
 	for i in _mats.size():
 		_mats[i].albedo_color = _cols[i].lerp(flash_col, clampf(flash, 0.0, 1.0) * 0.85)

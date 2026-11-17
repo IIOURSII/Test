@@ -23,8 +23,8 @@ func setup(post_process: PostProcess) -> void:
 	head.position = Vector2(80, 50)
 	head.add_theme_constant_override("separation", 20)
 	root.add_child(head)
-	head.add_child(UiStyle.seal("設", 72))
-	head.add_child(UiStyle.label("OPTIONS", 44, UiStyle.PAPER))
+	head.add_child(UiStyle.shield("設", 72, Color(0.1,0.12,0.2), Color(0.85,0.82,0.75)))
+	head.add_child(UiStyle.label("Optionen · Options", 56, UiStyle.PAPER, UiStyle.gothic()))
 
 	var v := VBoxContainer.new()
 	v.position = Vector2(110, 180)

@@ -50,8 +50,8 @@ var _pending_events: Array = []
 # --- Match (modes Duel et Local) ---
 const ROUNDS_TO_WIN := 2
 ## Couleurs des combattants : manteau / écharpe (et yeux).
-const PLAYER_COLORS := [Color(0.2, 0.25, 0.5), Color(0.55, 0.1, 0.1)]
-const PLAYER_ACCENTS := [Color(0.98, 0.78, 0.3), Color(0.95, 0.95, 0.9)]
+const PLAYER_COLORS := [Color(0.13, 0.13, 0.17), Color(0.58, 0.09, 0.09)]   # noir / cramoisi
+const PLAYER_ACCENTS := [Color(0.98, 0.76, 0.22), Color(0.96, 0.95, 0.9)]   # or / blanc
 var mode: String = "sandbox"       ## "sandbox" (debug), "duel_ai", "local"
 var difficulty: String = "normal"
 var match_state: String = "fight"  ## "intro", "fight", "ko", "between", "over"

@@ -17,10 +17,11 @@ FPS de mêlée « Japon médiéval fantasy ». Phase 1 en cours.
    **Échap** (ou Start) = pause.
 
 ### Manette (Joueur 2)
-Stick gauche : déplacement et manips · Stick droit : visée · **RT** lame · **RB** pommeau · **LT** garde/parry · **LB** dash · **A** saut · **B** accroupi · **X** changer de garde · **Y** potion · **R3** burst · **Croix haut** provocation · **Start** pause.
+Stick gauche : déplacement et manips · Stick droit : visée · **RT** lame · **RB** pommeau · **LT** garde/parry · **A** saut · **B** accroupi · **X** changer de garde · **Y** potion · **R3** burst · **Croix haut** provocation · **Start** pause.
 
-### Manips (minimum 3 directions)
-236 / 214 (quarts de cercle), 623 / 421 (demi-lunes), 41236 / 63214 (demi-cercles). Réglables dans `combat.json > input > motions`.
+### Coups : mémoire de 3 directions
+Le jeu retient tes **3 dernières directions différentes** (← → ↓ ↙ ↘ ; avancer/sauter/s'accroupir ne comptent pas), sans limite de temps. Un **clic** (lame ou pommeau) confirme le coup correspondant, **à n'importe quel moment** (il annule l'action en cours), puis la mémoire se vide. Clic avec moins de 3 directions = coup de base. L'indicateur en bas de l'écran montre ta mémoire et le coup que lancerait un clic.
+**Dash universel : ↓↘→ + clic** (droit devant ; ajoute une direction juste après la manip pour choisir le sens, ex. ↓↘→ puis ↓ = dash arrière).
 
 ## Touches (AZERTY par défaut, modifiables dans `data/config/controls.json`)
 
@@ -29,7 +30,7 @@ Stick gauche : déplacement et manips · Stick droit : visée · **RT** lame · 
 | Se déplacer | Z Q S D |
 | Sauter | Espace |
 | S'accroupir | Ctrl |
-| Dash | Shift + direction |
+| Dash | ↓↘→ + clic |
 | Changer de garde | A |
 | Lame / Pommeau | Clic gauche / Clic droit |
 | Garde (maintenir) / Parry (appui au bon moment) | E |
@@ -42,10 +43,10 @@ Stick gauche : déplacement et manips · Stick droit : visée · **RT** lame · 
 | Recharger les fichiers de données | F6 |
 | Libérer la souris | Échap (clic pour reprendre) |
 
-## Rythme : lent puis très rapide
+## Rythme : lent, lecture, puis explosions
 
 - Les attaques sont **lentes et lisibles** : un **reflet** brille sur la lame adverse juste avant le coup.
-- **Tout s'annule** avec le **Ki 気** (jauge blanche) : dash pendant un dash, dash pendant une attaque (feinte/fuite), attaque pendant une attaque ou un dash. Coûts réglables dans `combat.json > cancel` (0 = gratuit).
+- **Tout s'annule** : un clic confirmé lance son coup (ou le dash) immédiatement, quelle que soit l'action en cours.
 - Images rémanentes pendant les dashs et les annulations.
 
 ## Le Katana — « La Voie du sabre »
@@ -94,3 +95,6 @@ src/app.gd   ← écrans et lancement des combats ; src/game.gd = un combat
 - [x] Menus (titre, armes + classe secondaire, maps, options, pause), 6 maps à thème + 1 de debug, filtres d'image au choix
 - [ ] Étape 5 : game feel (hitstop, shake, sons, intro, coup final)
 - [ ] Étape 6 : IA (barres de vie et liste de coups déjà là)
+
+## Crédits
+- Police **Grenze Gotisch** (Omnibus-Type), licence SIL Open Font License 1.1 — `assets/fonts/OFL.txt`.

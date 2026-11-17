@@ -13,14 +13,14 @@ func setup() -> void:
 	add_child(root)
 
 	# Titre : sceau + nom (titre de travail, modifiable ici).
-	var seal := UiStyle.seal("真剣", 120)
-	seal.position = Vector2(90, 70)
-	root.add_child(seal)
-	var title := UiStyle.label("SHINKEN", 84, UiStyle.PAPER, UiStyle.serif(), 0)
-	title.position = Vector2(232, 62)
+	var crest := UiStyle.shield("真剣", 110)
+	crest.position = Vector2(90, 56)
+	root.add_child(crest)
+	var title := UiStyle.label("Shinken", 104, UiStyle.PAPER, UiStyle.gothic(), 0)
+	title.position = Vector2(222, 40)
 	root.add_child(title)
-	var sub := UiStyle.label(UiStyle.spaced("LA VOIE DU DUEL") + "     —     prototype", 16, UiStyle.MUTED)
-	sub.position = Vector2(238, 160)
+	var sub := UiStyle.label("Der Weg des Schwertes   ·   真剣の道   ·   prototype", 20, UiStyle.GOLD, UiStyle.gothic())
+	sub.position = Vector2(230, 158)
 	root.add_child(sub)
 	var line := ColorRect.new()
 	line.color = UiStyle.CRIMSON

@@ -4,7 +4,7 @@ extends Node
 ## Le filtre d'image (PostProcess) et les sons (Sfx) sont créés une seule fois et partagés.
 
 const GRAPHICS_CFG := "res://data/config/graphics.json"
-const MAP_ORDER := ["colisee", "western", "japon", "volcan", "banque", "chateau", "training"]
+const MAP_ORDER := ["colisee", "marktplatz", "western", "japon", "volcan", "banque", "chateau", "training"]
 
 var cfg: Dictionary
 var roster: Dictionary
